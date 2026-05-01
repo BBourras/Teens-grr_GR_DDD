@@ -1,0 +1,108 @@
+{# templates/home/index.v4.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}
+  Accueil
+{% endblock %}
+
+{% block body %}
+  <div class="container mt-4">
+    <div class="row g-5">
+      {# ── COLONNE GAUCHE : ÉDITORIAL STICKY ── #}
+      <div class="col-lg-5">
+        <div style="position: sticky; top: 100px;">
+          <h2 class="fw-bold mb-4">
+            Les ados, on les aime…<br />
+            <span class="text-warning">mais GRR 😅</span>
+          </h2>
+
+          <p class="lead mb-3">
+            Besoin d’un sas de décompression ?
+          </p>
+
+          <p class="text-muted mb-4">
+            Anecdotes vraies, absurdes ou drôles.
+          </p>
+
+          <a href="{{ path('post_create') }}" class="btn btn-success mb-4">
+            <i class="bi bi-pencil me-1"></i>
+            Partager mon anecdote
+          </a>
+
+          <div class="alert alert-warning border-0 small">
+            👉 Pas de solution miracle.<br />
+            Juste de la dérision… et un peu de solidarité.
+          </div>
+        </div>
+      </div>
+
+      {# ── COLONNE DROITE : POSTS ── #}
+      <div class="col-lg-7">
+        {# Navigation #}
+        <div class="d-flex gap-2 mb-4">
+          <a href="{{ path('post_trending') }}"
+            class="btn btn-outline-warning flex-fill">
+            🏆 Top
+          </a>
+          <a href="{{ path('post_legend') }}"
+            class="btn btn-outline-secondary flex-fill">
+            🏛️ Légendes
+          </a>
+          <a href="{{ path('post_recent') }}"
+            class="btn btn-outline-primary flex-fill">
+            🆕 Récents
+          </a>
+        </div>
+
+        <h5 class="text-muted mb-3">
+          Derniers messages
+        </h5>
+
+        {% if pagination is empty %}
+          <p class="text-muted">
+            Aucun post récent.
+          </p>
+        {% else %}
+          <div class="d-flex flex-column gap-4">
+            {% for post in pagination %}
+              <div class="position-relative">
+                {# Signalement discret #}
+                <div class="position-absolute top-0 end-0 p-2">
+                  <a href="{{
+                    path(
+                      'post_show',
+                      {
+                        id: post.id
+                      }
+                    )
+                    }}"
+                    class="text-muted small">
+                    ⚑
+                  </a>
+                </div>
+
+                {{
+                  include(
+                    'partials/posts/_post_card_with_votes.html.twig',
+                    {
+                      post: post,
+                      scores: scores[post.id]|default({}),
+                      userVote: userVote|default(null)
+                    }
+                  )
+                }}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="text-center mt-4">
+            <a href="{{ path('post_recent') }}"
+              class="btn btn-outline-primary w-100">
+              Encore →
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

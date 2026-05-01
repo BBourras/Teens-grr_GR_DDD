@@ -1,0 +1,67 @@
+security:
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: "auto"
+
+    role_hierarchy:
+        ROLE_MODERATOR: ROLE_USER
+        ROLE_ADMIN: [ROLE_MODERATOR, ROLE_USER]
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Domain\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js|build)/
+            security: false
+
+        main:
+            lazy: true
+            provider: app_user_provider
+            user_checker: App\Ui\Security\UserChecker
+
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                enable_csrf: true
+
+            logout:
+                path: app_logout
+                target: app_home
+
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
+
+    access_control:
+
+        # ====================== Pages totalement publiques ======================
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/register$, roles: PUBLIC_ACCESS }
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+
+        # ====================== Lecture des posts (public) ======================
+        - { path: ^/posts/?$, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/posts/\d+$, roles: PUBLIC_ACCESS, methods: [GET] }
+
+        # ====================== Votes (ouverts aux invités + connectés) ======================
+        - { path: ^/posts/\d+/vote$, roles: PUBLIC_ACCESS, methods: [POST] }
+
+        # ====================== Actions réservées aux utilisateurs connectés ======================
+        - { path: ^/posts/new$, roles: ROLE_USER }
+        - { path: ^/posts/\d+/edit$, roles: ROLE_USER }
+        - { path: ^/posts/\d+/delete$, roles: ROLE_USER, methods: [POST] }
+
+        - { path: ^/posts/\d+/comments$, roles: ROLE_USER, methods: [POST] }
+        - { path: ^/posts/\d+/comments/\d+/delete$, roles: ROLE_USER, methods: [POST] }
+
+        # ====================== Signalements (uniquement connectés) ======================
+        - { path: ^/reports/, roles: ROLE_USER, methods: [POST] }
+
+        # ====================== Modération ======================
+        - { path: ^/moderation, roles: ROLE_MODERATOR }
+
+        # ====================== Dashboard utilisateur ======================
+        - { path: ^/my-account, roles: ROLE_USER }

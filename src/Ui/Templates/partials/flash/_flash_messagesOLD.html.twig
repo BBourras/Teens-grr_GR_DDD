@@ -1,0 +1,33 @@
+{# templates/partials/flash/_flash_messages.html.twig #}
+
+{#
+    Partial global pour afficher les messages flash Bootstrap.
+    
+    Types supportés :
+    - success → alert-success
+    - error   → alert-danger
+    - warning → alert-warning
+    - info    → alert-info
+    - danger  → alert-danger (alias de error)
+    
+    A inclure dans base.html.twig : pour des raisons d'affichage, LE PLACER EN HAUT du contenu (juste après <div class="container">) 
+        {{ include('partials/flash/_flash_messages.html.twig') }}
+#}
+
+{% for label, messages in app.flashes %}
+    {% for message in messages %}
+        {% set alertClass = label == 'error' ? 'danger' : (label == 'danger' ? 'danger' : label) %}
+        
+        <div class="alert alert-{{ alertClass }} alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi 
+                {% if alertClass == 'success' %}bi-check-circle-fill
+                {% elseif alertClass == 'danger' %}bi-x-circle-fill
+                {% elseif alertClass == 'warning' %}bi-exclamation-triangle-fill
+                {% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            
+            {{ message|raw }}
+            
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+        </div>
+    {% endfor %}
+{% endfor %}

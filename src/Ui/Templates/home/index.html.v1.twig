@@ -1,0 +1,75 @@
+{# templates/post/recent.html.v1.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}
+  Posts récents
+{% endblock %}
+
+{% block body %}
+  <div class="container mt-4">
+    <h1 class="mb-4">
+      <i class="bi bi-rss me-2"></i> Posts récents
+    </h1>
+
+    {% include 'partials/flash/_flash_messages.html.twig' %}
+
+    <div class="row row-cols-1 row-cols-lg-2 g-4">
+      {% for post in pagination %}
+        <div class="col">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">
+                {{ post.title }}
+              </h5>
+              <p class="text-muted small">
+                par {{ post.author.username }} • {{ post.createdAt|date('d/m/Y ...H:i') }}
+              </p>
+              <p class="card-text">
+                {{ post.content|slice(0, 220) }}{% if
+                  (post.content|length) > 220 %}…{% endif %}
+              </p>
+            </div>
+
+            {# Votes directement intégrés #}
+            <div class="card-footer bg-transparent">
+              {{
+                include(
+                  'partials/posts/_post_votes.html.twig',
+                  {
+                    post: post,
+                    postScores: scores[post.id]|default({}),
+                    userVote: userVote|default(null)
+                  }
+                )
+              }}
+            </div>
+
+            <div class="card-footer bg-transparent d-flex justify-content-between">
+              <a href="{{
+                path(
+                  'post_show',
+                  {
+                    id: post.id
+                  }
+                )
+                }}"
+                class="btn btn-sm btn-outline-primary">
+                Lire + commenter
+              </a>
+              <button class="btn btn-sm btn-outline-danger"
+                data-post-id="{{ post.id }}"
+                onclick="reportPost(this.dataset.postId)">
+                Signaler
+              </button>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {# Pagination #}
+    <div class="d-flex justify-content-center mt-5">
+      {{ knp_pagination_render(pagination) }}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{# templates/partials/comments/_comment_form.html.twig #}
+
+{{
+  form_start(
+    form,
+    {
+      attr: {
+        action: path(
+          'comment_create',
+          {
+            id: post.id
+          }
+        ),
+        class: 'comment-form'
+      }
+    }
+  )
+}}
+
+<div class="mb-3">
+  {{
+    form_widget(
+      form.content,
+      {
+        attr: {
+          class: 'form-control',
+          rows: 5,
+          placeholder: 'Votre commentaire ou réaction… Soyez respectueux 😉'
+        }
+      }
+    )
+  }}
+  {{ form_errors(form.content) }}
+</div>
+
+<div class="d-flex justify-content-end">
+  <button type="submit" class="btn btn-primary">
+    <i class="bi bi-send"></i> Publier le commentaire
+  </button>
+</div>
+
+{{ form_end(form) }}

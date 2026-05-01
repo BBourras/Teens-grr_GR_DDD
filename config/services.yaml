@@ -1,0 +1,51 @@
+# config/services.yaml
+
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # ======================================================
+    # Chargement global de l'application
+    # ======================================================
+    # Symfony scanne tout src/ automatiquement.
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Domain/Entity/'   # Entités = pas des services
+            - '../src/Kernel.php'
+
+    # ======================================================
+    # DDD — Bindings Interface → Implémentation
+    # ======================================================
+    # Le Domain définit des interfaces,
+    # l’Infrastructure fournit les implémentations.
+    #
+    # 👉 Symfony ne peut PAS deviner automatiquement
+    # quelle implémentation utiliser → alias obligatoires.
+
+    App\Domain\Contract\CommentRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\CommentRepository
+
+    App\Domain\Contract\PostRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\PostRepository
+
+    App\Domain\Contract\ReportRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\ReportRepository
+
+    App\Domain\Contract\VoteRepositoryInterface:
+        alias: App\Infrastructure\Persistence\Repository\VoteRepository
+    
+    App\Domain\Contract\ModerationServiceInterface:
+        alias: App\Application\Service\ModerationService
+    
+    Symfony\Component\Security\Http\Authenticator\FormLoginAuthenticator:
+        alias: security.authenticator.form_login.main
+
+    # ======================================================
+    # Cas spécifique : RateLimiter
+    # ======================================================
+    Symfony\Component\RateLimiter\RateLimiterFactory $voteGuestLimiter:
+        alias: limiter.vote_guest

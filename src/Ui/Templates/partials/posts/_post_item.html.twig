@@ -1,0 +1,42 @@
+{# templates/partials/posts/_post_item.html.twig #}
+
+<div class="post-item border-bottom pb-4 mb-4">
+
+    <div class="d-flex justify-content-between align-items-start">
+        <h3 class="h4 mb-2">
+            <a href="{{ path('post_show', {id: post.id}) }}" class="text-decoration-none text-dark">
+                {{ post.title }}
+            </a>
+        </h3>
+
+        {# Statut visible seulement pour les modérateurs ou si masqué #}
+        {% if not post.isVisible() %}
+            <span class="badge {% if post.isAutoModerated() %}bg-warning text-dark{% elseif post.isManuallyModerated() %}bg-danger{% else %}bg-secondary{% endif %}">
+                {% if post.isAutoModerated() %}Masqué auto{% elseif post.isManuallyModerated() %}Masqué modérateur{% else %}Supprimé{% endif %}
+            </span>
+        {% endif %}
+    </div>
+
+    <div class="text-muted small mb-3">
+        Par <strong>{{ post.author.username }}</strong> 
+        • {{ post.createdAt|date('d/m/Y - H:i') }}
+    </div>
+
+    <div class="post-content mb-3">
+        {{ post.getExcerpt(220) }}
+    </div>
+
+    {# Votes #}
+    <div class="card-footer bg-transparent border-0 pt-0">
+        {% include 'partials/posts/_post_votes.html.twig' with {
+            post: post,
+            postScores: postScores[post.id]|default({})
+        } %}
+    </div>
+
+    {# Lien vers le post complet #}
+    <a href="{{ path('post_show', {id: post.id}) }}" class="btn btn-sm btn-outline-primary mt-2">
+        Lire la suite →
+    </a>
+
+</div>

@@ -1,0 +1,8 @@
+framework:
+    rate_limiter:
+     # Limiteur spécifique aux votes des invités
+        vote_guest:
+            policy: sliding_window
+            limit: 5           # max 5 tentatives...
+            interval: '60 seconds'  # ...toutes les 60 secondes
+            cache_pool: cache.app   # ou redis si tu as

@@ -1,0 +1,106 @@
+{# templates/dashboard/moderation_history.html.twig #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}
+  Historique de modération - {{ app.user.username }}
+{% endblock %}
+
+{% block body %}
+  <div class="container mt-4">
+    {# Header aligné comme my_comments #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="mb-0">
+        <i class="bi bi-clock-history me-2"></i>
+        Historique de modération
+      </h1>
+
+      <a href="{{ path('user_dashboard') }}" class="btn btn-outline-secondary">
+        ← Retour au tableau de bord
+      </a>
+    </div>
+
+    {% if logs is empty %}
+      <div class="alert alert-info text-center py-5">
+        <i class="bi bi-clock-history display-4 text-muted mb-3"></i>
+        <h5>
+          Aucune action de modération n'a encore été enregistrée sur vos
+          contenus.
+        </h5>
+      </div>
+    {% else %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>
+                Date
+              </th>
+              <th>
+                Action
+              </th>
+              <th>
+                Contenu concerné
+              </th>
+              <th>
+                Raison
+              </th>
+              <th>
+                Modérateur
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+              <tr>
+                <td>
+                  {{ log.createdAt|date('d/m/Y - H:i') }}
+                </td>
+
+                <td>
+                  <span class="badge bg-{{
+                    log.isAutomaticAction()
+                      ? 'warning'
+                      : 'primary'
+                    }}">
+                    {{ log.actionType.label() }}
+                  </span>
+                </td>
+
+                <td>
+                  {% if log.isForPost() %}
+                    <a href="{{
+                      path(
+                        'post_show',
+                        {
+                          id: log.post.id
+                        }
+                      )
+                      }}">
+                      {{ (log.post.title|slice(0, 60)) ~ '...' }}
+                    </a>
+                  {% else %}
+                    Commentaire sur « {{ (log.comment.post.title|slice(0, 50))
+                      ~ '...' }} »
+                  {% endif %}
+                </td>
+
+                <td>
+                  {{ log.reason|default('<em>Non renseignée</em>')|raw }}
+                </td>
+
+                <td>
+                  {% if log.moderator %}
+                    {{ log.moderator.username }}
+                  {% else %}
+                    <em>Système</em>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

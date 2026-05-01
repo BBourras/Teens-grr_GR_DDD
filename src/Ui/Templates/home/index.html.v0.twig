@@ -1,0 +1,104 @@
+{# templates/home/index.htmlOLD.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}
+  Accueil
+{% endblock %}
+
+{% block body %}
+  <div class="row">
+    {# ── COLONNE GAUCHE : contenu éditorial ─────────────────────────── #}
+    <div class="col-lg-8">
+      <div class="mb-5">
+        <h3 class="fw-bold mb-4">
+          A tous ceux qui côtoient le monde merveilleux de l'adolescence !
+        </h3>
+
+        <p class="muted mb-2">
+          <strong>
+            Parents, profs, éducateurs… besoin d’un sas de décompression ?
+
+            Souriez, vous êtes au bon endroit !
+          </strong>
+        </p>
+
+        <p class="text-muted mb-4">
+          Les ados, on les aime... mais GRR !
+        </p>
+
+        <a href="{{ path('post_create') }}" class="btn btn-success">
+          <i class="bi bi-pencil"></i>
+          Participer / Raconter une anecdote
+        </a>
+      </div>
+
+      <section class="mt-5">
+        <ul class="text-muted lh-lg mb-4">
+          <li>Des anecdotes incroyables ... mais vraies</li>
+          <li>Des portraits d'adolescents de 12 à 30 ans... et plus !</li>
+          <li>De la dérision... et de l'autodérision</li>
+          <li>Des sourires... et des rires</li>
+        </ul>
+
+        <div class="alert alert-warning d-flex align-items-center"
+          style="font-family: Arial, sans-serif; font-weight: 300;">
+          <div class="fw-semibold mb-0">
+            👉 Ici, pas de mode d’emploi miracle ni de grande leçon de
+            psychologie.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    {# ── COLONNE DROITE : navigation + récents ──────────────────────── #}
+    <div class="col-lg-4">
+      <section>
+        {# ── Boutons ──────────────────────────────────────────────── #}
+        <div class="d-grid gap-2 mb-5">
+          <a href="{{ path('post_trending') }}" class="btn btn-outline-warning">
+            <i class="bi bi-trophy"></i>
+            Top du moment
+          </a>
+          <a href="{{ path('post_legend') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-bank me-1"></i>
+            Légendes
+          </a>
+          <a href="{{ path('post_recent') }}" class="btn btn-outline-primary">
+            <i class="bi bi-rss me-1"></i>
+            Récemment
+          </a>
+        </div>
+
+        {# ── Derniers posts ──────────────────────────────────────── #}
+        <h4 class="mb-3">
+          <i class="bi bi-clock"></i>
+          Les messages les plus récents
+        </h4>
+
+        {% if pagination is empty %}
+          <p class="text-muted">
+            Aucun post publié récemment.
+          </p>
+        {% else %}
+          <div class="d-flex flex-column gap-3">
+            {% for post in pagination %}
+              {{
+                include(
+                  'partials/posts/_post_card.html.twig',
+                  {
+                    post: post
+                  }
+                )
+              }}
+            {% endfor %}
+          </div>
+
+          <a href="{{ path('post_recent') }}"
+            class="btn btn-sm btn-outline-primary mt-3 w-100">
+            Voir tous les posts →
+          </a>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+{% endblock %}

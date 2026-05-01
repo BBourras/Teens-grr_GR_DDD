@@ -1,0 +1,105 @@
+{# templates/dashboard/my_reports.html.twig #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes signalements - {{ app.user.username }}{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-flag-fill text-danger me-3"></i>
+                Mes signalements ({{ reports|length }})
+            </h1>
+            <a href="{{ path('user_dashboard') }}" class="btn btn-outline-secondary">
+                ← Retour au tableau de bord
+            </a>
+        </div>
+
+        {% if reports is empty %}
+            <div class="alert alert-info text-center py-5">
+                <i class="bi bi-flag display-4 text-muted mb-3"></i>
+                <h5>Vous n'avez encore signalé aucun contenu.</h5>
+                <p class="text-muted">Lorsque vous signalerez un post ou un commentaire, il apparaîtra ici.</p>
+            </div>
+        {% else %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type de contenu</th>
+                            <th>Raison principale</th>
+                            <th>Détail</th>
+                            <th>Contenu concerné</th>
+                            <th>Statut actuel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                            <tr>
+                                <!-- Date -->
+                                <td class="text-nowrap">
+                                    <small class="text-muted">{{ report.createdAt|date('d/m/Y - H:i') }}</small><br>
+                                    <small>{{ report.createdAt|date('H:i') }}</small>
+                                </td>
+
+                                <!-- Type -->
+                                <td>
+                                    <span class="badge {% if report.isForPost() %}bg-primary{% else %}bg-secondary{% endif %}">
+                                        {{ report.isForPost() ? 'Post' : 'Commentaire' }}
+                                    </span>
+                                </td>
+
+                                <!-- Raison principale -->
+                                <td>
+                                    <strong>{{ report.reason.label() }}</strong>
+                                </td>
+
+                                <!-- Détail (reasonDetail) -->
+                                <td class="text-muted">
+                                    {% if report.reasonDetail %}
+                                        {{ report.reasonDetail|slice(0, 80) }}{% if report.reasonDetail|length > 80 %}…{% endif %}
+                                    {% else %}
+                                        <em class="text-secondary">—</em>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Contenu concerné -->
+                                <td>
+                                    {% if report.isForPost() %}
+                                        <a href="{{ path('post_show', {id: report.post.id}) }}" class="text-decoration-none">
+                                            {{ report.post.title|slice(0, 65) }}{% if report.post.title|length > 65 %}…{% endif %}
+                                        </a>
+                                    {% else %}
+                                        <a href="{{ path('post_show', {id: report.comment.post.id}) }}" class="text-decoration-none">
+                                            Commentaire sur « {{ report.comment.post.title|slice(0, 50) }}… »
+                                        </a>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Statut actuel du contenu -->
+                                <td>
+                                    {% set status = report.isForPost() ? report.post.getStatusEnum() : report.comment.getStatusEnum() %}
+                                    <span class="badge 
+                                        {% if status.isVisible() %}bg-success
+                                        {% elseif status.isAutoModerated() %}bg-warning
+                                        {% elseif status.isManuallyModerated() %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ status.label() }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 text-muted small">
+                <i class="bi bi-info-circle"></i> 
+                Les signalements sont traités par la communauté et les modérateurs. 
+                Vous pouvez suivre l’évolution du statut du contenu signalé.
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

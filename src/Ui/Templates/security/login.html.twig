@@ -1,0 +1,76 @@
+{# templates/security/login.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+
+        <h1 class="mb-4 text-center">Se connecter</h1>
+
+        {% include 'partials/flash/_flash_messages.html.twig' %}
+
+        {# ── Erreur d'authentification ────────────────────────────────────── #}
+        {#
+            error.messageKey est la clé de traduction Symfony Security.
+            |trans avec le domaine 'security' retourne le message localisé.
+        #}
+        {% if error %}
+            <div class="alert alert-danger">
+                {{ error.messageKey|trans(error.messageData, 'security') }}
+            </div>
+        {% endif %}
+
+        {# ── Formulaire de connexion ──────────────────────────────────────── #}
+        {#
+            Le firewall Symfony intercepte la soumission sur check_path (app_login POST).
+            Le formulaire ne pointe donc pas vers un controller custom.
+        #}
+        <form method="post">
+
+            <div class="mb-3">
+                <label for="inputEmail" class="form-label">Adresse email</label>
+                <input type="email"
+                       value="{{ last_username }}"
+                       name="_username"
+                       id="inputEmail"
+                       class="form-control"
+                       autocomplete="email"
+                       required
+                       autofocus>
+            </div>
+
+            <div class="mb-3">
+                <label for="inputPassword" class="form-label">Mot de passe</label>
+                <input type="password"
+                       name="_password"
+                       id="inputPassword"
+                       class="form-control"
+                       autocomplete="current-password"
+                       required>
+            </div>
+
+            {#
+                Token CSRF requis par enable_csrf: true dans security.yaml.
+                Le nom du token doit être 'authenticate'.
+            #}
+            <input type="hidden" name="_csrf_token"
+                   value="{{ csrf_token('authenticate') }}">
+
+            <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    Se connecter
+                </button>
+            </div>
+
+        </form>
+
+        <p class="text-center text-muted">
+            Pas encore de compte ?
+            <a href="{{ path('app_register') }}">S'inscrire</a>
+        </p>
+
+    </div>
+</div>
+{% endblock %}

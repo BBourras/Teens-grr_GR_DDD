@@ -1,0 +1,55 @@
+{# templates/moderation/reports.html.twig #}
+{#
+    Vue optionnelle : liste des contenus signalés.
+    Utilise les mêmes partials que le dashboard.
+    Les partials _post_reported et _comment_reported ont été
+    fusionnés dans _post_moderation_item et _comment_moderation_item.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Éléments signalés{% endblock %}
+
+{% block body %}
+
+    <h1 class="mb-4">⚠️ Éléments signalés</h1>
+
+    {% include 'partials/flash/_flash_messages.html.twig' %}
+
+    {# ── Posts signalés ───────────────────────────────────────────────────── #}
+    <h2 class="mb-3">Posts signalés</h2>
+
+    {% if posts is defined and posts is not empty %}
+        {% for post in posts %}
+            {{ include('partials/moderation/_post_moderation_item.html.twig', {
+                post: post
+            }) }}
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-success mb-4">
+            ✅ Aucun post signalé.
+        </div>
+    {% endif %}
+
+    <hr class="my-4">
+
+    {# ── Commentaires signalés ────────────────────────────────────────────── #}
+    <h2 class="mb-3">Commentaires signalés</h2>
+
+    {% if comments is defined and comments is not empty %}
+        {% for comment in comments %}
+            {{ include('partials/moderation/_comment_moderation_item.html.twig', {
+                comment: comment
+            }) }}
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-success">
+            ✅ Aucun commentaire signalé.
+        </div>
+    {% endif %}
+
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="{{ asset('js/moderation_reason.js') }}" defer></script>
+{% endblock %}

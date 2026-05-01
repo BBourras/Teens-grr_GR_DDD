@@ -1,0 +1,91 @@
+{# templates/home/index.v5.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}
+  Accueil
+{% endblock %}
+
+{% block body %}
+  {# ── HERO IMMERSIF ── #}
+  <div class="bg-light py-5 mb-5">
+    <div class="container text-center">
+      <h1 class="fw-bold display-5 mb-4">
+        Les ados❤️ … mais GRR 😅
+      </h1>
+
+      <p class="lead mb-4">
+        Parents, profs, éducateurs… besoin d'un sas de décompression ? Vous êtes
+        au bon endoit !
+      </p>
+
+      <p class="text-muted mb-4">
+        Anecdotes vraies. Parfois drôles. Parfois absurdes. Toujours vécues.
+      </p>
+
+      <a href="{{ path('post_create') }}" class="btn btn-success btn-lg">
+        <i class="bi bi-pencil me-2"></i>
+        Partager mon anecdote
+      </a>
+    </div>
+  </div>
+
+  {# ── CONTENU ── #}
+  <div class="container">
+    <h4 class="mb-4 text-muted">
+      Derniers posts
+    </h4>
+
+    {% if pagination is empty %}
+      <p class="text-muted">
+        Aucun post pour le moment.
+      </p>
+    {% else %}
+      <div class="d-flex flex-column gap-4">
+        {% for post in pagination %}
+          <div class="position-relative">
+            {# Signalement discret #}
+            <div class="position-absolute top-0 end-0 p-2">
+              <a href="{{
+                path(
+                  'post_show',
+                  {
+                    id: post.id
+                  }
+                )
+                }}"
+                class="text-muted small">
+                ⚑
+              </a>
+            </div>
+
+            {{
+              include(
+                'partials/posts/_post_card_with_votes.html.twig',
+                {
+                  post: post,
+                  scores: scores[post.id]|default({}),
+                  userVote: userVote|default(null)
+                }
+              )
+            }}
+          </div>
+        {% endfor %}
+      </div>
+
+      {# Bouton encore #}
+      <div class="text-center mt-4">
+        <a href="{{ path('post_recent') }}"
+          class="btn btn-outline-secondary w-100">
+          Encore des anecdotes →
+        </a>
+      </div>
+    {% endif %}
+
+    {# CTA bas (rappel) #}
+    <div class="text-center mt-5">
+      <a href="{{ path('post_create') }}" class="btn btn-success">
+        Raconter moi aussi →
+      </a>
+    </div>
+  </div>
+{% endblock %}

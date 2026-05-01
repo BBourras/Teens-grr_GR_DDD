@@ -1,0 +1,43 @@
+{# templates/partials/moderation/_comment_reported.html.twig #}
+{# Partial pour afficher un commentaire signalé dans le dashboard de modération #}
+
+<div class="card mb-3 border-warning">
+  <div class="card-body">
+    {# Auteur et date du commentaire #}
+    <p class="text-muted mb-1">
+      <strong>{{ comment.author.username }}</strong>
+      • {{ comment.createdAt|date('d/m/Y - H:i') }}
+    </p>
+
+    {# Contenu du commentaire (limité pour éviter trop de texte) #}
+    <p>
+      {{ comment.content|slice(0, 200) }}{% if
+        (comment.content|length) > 200 %}...{% endif %}
+    </p>
+
+    {# Indication sur le statut et nombre de signalements #}
+    <p class="text-warning mb-2">
+      ⚠️ {{ comment.reportCount }} signalement{{ comment.reportCount > 1
+        ? 's'
+        : '' }}
+      {% if
+        comment.status != constant('App\\\\Enum\\\\ContentStatus::PUBLISHED') %}
+        • Statut : {{ comment.status|lower }}
+      {% endif %}
+    </p>
+
+    {# Bouton pour restaurer le commentaire (formulaire POST) #}
+    <form action="{{
+      path(
+        'moderation_comment_restore',
+        {
+          id: comment.id
+        }
+      )
+      }}"
+      method="post"
+      class="d-inline">
+      <button class="btn btn-sm btn-success" type="submit">Restaurer</button>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,60 @@
+{# templates/dashboard/my_comments.html.twig #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes commentaires -
+	{{ app.user.username }}
+{% endblock %}
+
+{% block body %}
+	<div class="container mt-4">
+		<div class="d-flex justify-content-between align-items-center mb-4">
+			<h1>
+				<i class="bi bi-chat-dots me-3"></i>
+				Mes commentaires ({{ comments|length }})
+			</h1>
+			<a href="{{ path('user_dashboard') }}" class="btn btn-outline-secondary">
+				← Retour au tableau de bord
+			</a>
+		</div>
+
+		{% if comments is empty %}
+			<div class="alert alert-info text-center py-5">
+				<i class="bi bi-chat-dots display-4 text-muted mb-3"></i>
+				<h5>Vous n'avez encore laissé aucun commentaire.</h5>			</div>
+		{% else %}
+			<div class="list-group">
+				{% for comment in comments %}
+					<div class="list-group-item list-group-item-action">
+						<div class="d-flex w-100 justify-content-between">
+							<div>
+								<h6 class="mb-1">
+									Sur le post :
+									<a href="{{ path('post_show', {id: comment.post.id}) }}" class="text-decoration-none">
+										{{ comment.post.title }}
+									</a>
+								</h6>
+								<small class="text-muted">
+									{{ comment.createdAt|date('d/m/Y - H:i') }}
+								</small>
+							</div>
+
+							<span class="badge
+								{% if comment.isVisible() %}bg-success
+								{% elseif comment.isAutoModerated() %}bg-warning
+								{% elseif comment.isManuallyModerated() %}bg-danger
+								{% else %}bg-secondary{% endif %}">
+								{{ comment.getStatusEnum().label() }}
+							</span>
+						</div>
+
+						<div class="mt-2">
+							{{ comment.content|nl2br }}
+						</div>
+					</div>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</div>
+
+{% endblock %}

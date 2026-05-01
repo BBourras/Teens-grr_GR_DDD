@@ -1,0 +1,122 @@
+{#
+    templates/partials/moderation/_comment_moderation_item.html.twig
+    -------------------------------------------------------
+    Affichage d'un commentaire en attente de décision manuelle
+    dans le dashboard de modération.
+
+    Fusionne les anciens partials _comment_moderation_item
+    et _comment_reported (qui étaient identiques).
+
+    Affiche les 3 actions disponibles :
+    - Restaurer  → moderation_comment_restore
+    - Masquer    → moderation_comment_hide
+    - Supprimer  → moderation_comment_delete
+
+    Chaque formulaire inclut :
+    - Token CSRF (id unique par commentaire et par action)
+    - Champ reason optionnel (raison de la décision)
+
+    Variables attendues :
+        - comment : entité Comment
+
+    Usage :
+        {% for comment in comments %}
+            {{ include('partials/moderation/_comment_moderation_item.html.twig', { comment: comment }) }}
+        {% endfor %}
+#}
+<div class="card mb-3 border-warning">
+  <div class="card-body">
+    {# Métadonnées #}
+    <p class="text-muted small mb-2">
+      Par <strong>{{ comment.author.username }}</strong>
+      • {{ comment.createdAt|date('d/m/Y - H:i') }}
+      • <span class="badge bg-warning text-dark">
+        ⚠️ {{ comment.reportCount }} signalement{{ comment.reportCount > 1 ? 's' : '' }}
+      </span>
+      • Statut : <em>{{ comment.status.label() }}</em>
+    </p>
+
+    {# Contenu tronqué — |striptags + u.truncate évite les entités HTML cassées #}
+    <p class="mb-3">
+      {{ comment.content|striptags|u.truncate(300, '…', false) }}
+    </p>
+
+    {# Champ raison #}
+    <div class="mb-3">
+      <label class="form-label small text-muted">
+        Raison de la décision (optionnel)
+      </label>
+      <input type="text"
+        id="reason-comment-{{ comment.id }}"
+        class="form-control form-control-sm"
+        placeholder="Ex : harcèlement, spam…"
+        maxlength="255" />
+    </div>
+
+    {# Actions #}
+    <div class="d-flex gap-2 flex-wrap">
+      {# Restaurer #}
+      <form action="{{
+        path(
+          'moderation_comment_restore',
+          {
+            id: comment.id
+          }
+        )
+        }}"
+        method="post"
+        class="moderation-form"
+        data-reason-source="reason-comment-{{ comment.id }}">
+        <input type="hidden"
+          name="_token"
+          value="{{ csrf_token('moderation_comment_' ~ comment.id) }}" />
+        <input type="hidden" name="reason" class="reason-field" />
+        <button type="submit" class="btn btn-sm btn-success">
+          ✅ Restaurer
+        </button>
+      </form>
+
+      {# Masquer #}
+      <form action="{{
+        path(
+          'moderation_comment_hide',
+          {
+            id: comment.id
+          }
+        )
+        }}"
+        method="post"
+        class="moderation-form"
+        data-reason-source="reason-comment-{{ comment.id }}">
+        <input type="hidden"
+          name="_token"
+          value="{{ csrf_token('moderation_comment_' ~ comment.id) }}" />
+        <input type="hidden" name="reason" class="reason-field" />
+        <button type="submit" class="btn btn-sm btn-warning">🚫 Masquer</button>
+      </form>
+
+      {# Supprimer #}
+      <form action="{{
+        path(
+          'moderation_comment_delete',
+          {
+            id: comment.id
+          }
+        )
+        }}"
+        method="post"
+        class="moderation-form"
+        data-reason-source="reason-comment-{{ comment.id }}">
+        <input type="hidden"
+          name="_token"
+          value="{{ csrf_token('moderation_comment_' ~ comment.id) }}" />
+        <input type="hidden" name="reason" class="reason-field" />
+        <button type="submit"
+          class="btn btn-sm btn-danger"
+          onclick="return confirm('Supprimer définitivement ce commentaire ?')">
+          🗑 Supprimer
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

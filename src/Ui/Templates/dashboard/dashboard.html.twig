@@ -1,0 +1,144 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mon compte - {{ app.user.username }}{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        
+        <!-- En-tête du dashboard -->
+        <div class="row align-items-center mb-5">
+            <div class="col-auto">
+                <i class="bi bi-person-circle display-1 text-muted"></i>
+            </div>
+            <div class="col">
+                <h2 class="mb-1">Tableau de bord de "{{ app.user.username }}"</h2>
+                <p class="text-muted mb-0">
+                    Membre depuis {{ app.user.createdAt|date('d/m/Y - H:i') }}
+                </p>
+            </div>
+            <div class="col-auto">
+                <a href="{{ path('post_create') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Nouveau post
+                </a>
+            </div>
+        </div>
+
+        <!-- Cartes de navigation rapides -->
+        <div class="row g-4 mb-5">
+            
+            <!-- Mes posts -->
+            <div class="col-md-6 col-lg-3">
+                <a href="{{ path('user_my_posts') }}" class="text-decoration-none">
+                    <div class="card h-100 hover-card border-primary">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-file-earmark-text display-4 text-primary mb-3"></i>
+                            <h5 class="card-title">Mes posts</h5>
+                            <p class="text-muted small">Voir et gérer toutes mes publications</p>
+                        </div>
+                        <div class="card-footer bg-transparent text-center text-primary">
+                            <small><i class="bi bi-arrow-right"></i> Accéder</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Mes commentaires -->
+            <div class="col-md-6 col-lg-3">
+                <a href="{{ path('user_my_comments') }}" class="text-decoration-none">
+                    <div class="card h-100 hover-card border-success">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-chat-dots display-4 text-success mb-3"></i>
+                            <h5 class="card-title">Mes commentaires</h5>
+                            <p class="text-muted small">Tous mes commentaires publiés</p>
+                        </div>
+                        <div class="card-footer bg-transparent text-center text-success">
+                            <small><i class="bi bi-arrow-right"></i> Accéder</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Mes signalements -->
+            <div class="col-md-6 col-lg-3">
+                <a href="{{ path('user_my_reports') }}" class="text-decoration-none">
+                    <div class="card h-100 hover-card border-danger">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-flag-fill display-4 text-danger mb-3"></i>
+                            <h5 class="card-title">Mes signalements</h5>
+                            <p class="text-muted small">Historique détaillé de mes signalements</p>
+                        </div>
+                        <div class="card-footer bg-transparent text-center text-danger">
+                            <small><i class="bi bi-arrow-right"></i> Accéder</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Historique de modération -->
+            <div class="col-md-6 col-lg-3">
+                <a href="{{ path('user_moderation_history') }}" class="text-decoration-none">
+                    <div class="card h-100 hover-card border-warning">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-clock-history display-4 text-warning mb-3"></i>
+                            <h5 class="card-title">Historique</h5>
+                            <p class="text-muted small">Actions de modération sur mes contenus</p>
+                        </div>
+                        <div class="card-footer bg-transparent text-center text-warning">
+                            <small><i class="bi bi-arrow-right"></i> Accéder</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Section "Derniers posts" (aperçu) -->
+        <h4 class="mb-3">
+            <i class="bi bi-file-earmark-text me-2"></i>
+            Mes derniers posts
+        </h4>
+
+        {% if myPosts is empty %}
+            <div class="alert alert-info">
+                Vous n'avez encore publié aucun post.
+            </div>
+        {% else %}
+            <div class="row row-cols-1 row-cols-md-2 g-4 mb-5">
+                {% for post in myPosts|slice(0, 4) %}
+                    <div class="col">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title fs-6">{{ post.title }}</h5>
+                                <p class="card-text small text-muted">
+                                    {{ post.createdAt|date('d/m/Y - H:i') }}
+                                </p>
+                                <div class="mt-2">
+                                    <span class="badge 
+                                        {% if post.isVisible() %}bg-success
+                                        {% elseif post.isHidden() %}bg-warning
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ post.getStatusEnum().label() }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{{ path('post_show', {id: post.id}) }}" class="btn btn-sm btn-outline-primary">
+                                    Voir le post
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if myPosts|length > 4 %}
+                <div class="text-center">
+                    <a href="{{ path('user_my_posts') }}" class="btn btn-outline-secondary">
+                        Voir tous mes posts ({{ myPosts|length }})
+                    </a>
+                </div>
+            {% endif %}
+        {% endif %}
+
+    </div>
+{% endblock %}

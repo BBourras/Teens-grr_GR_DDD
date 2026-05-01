@@ -1,0 +1,58 @@
+{# templates/security/register.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% form_theme registrationForm 'bootstrap_5_layout.html.twig' %}
+
+{% block title %}Inscription{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+
+        <h1 class="mb-4 text-center">Créer un compte</h1>
+
+        {% include 'partials/flash/_flash_messages.html.twig' %}
+
+        {#
+            - novalidate : laisse Symfony gérer la validation côté serveur.
+            - Les contraintes Assert + UniqueEntity sur User s'appliquent au flush.
+        #}
+        {{ form_start(registrationForm, {
+            attr: { novalidate: 'novalidate' }
+        }) }}
+
+            <div class="mb-3">
+                {{ form_row(registrationForm.email) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form_row(registrationForm.username, {
+                    help: 'Longueur : 3 à 50 caractères. Uniquement : lettres, chiffres, tirets et underscores  (pas d\'espace).'
+                }) }}
+            </div>
+
+            {#
+                plainPassword est un RepeatedType.
+                Symfony génère deux champs : plainPassword[first] et plainPassword[second].
+                form_row() les affiche automatiquement.
+            #}
+            <div class="mb-3">
+                {{ form_row(registrationForm.plainPassword) }}
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    S'inscrire
+                </button>
+            </div>
+
+        {{ form_end(registrationForm) }}
+
+        <p class="mt-3 text-center text-muted">
+            Déjà inscrit ?
+            <a href="{{ path('app_login') }}">Connectez-vous</a>
+        </p>
+
+    </div>
+</div>
+{% endblock %}

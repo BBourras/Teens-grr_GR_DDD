@@ -1,0 +1,8 @@
+{# templates/partials/posts/_post_form.html.twig #}
+{# Formulaire de création / édition de post #}
+
+{{ form_start(form) }}
+    {{ form_row(form.title) }}
+    {{ form_row(form.content) }}
+    <button type="submit">Enregistrer</button>
+{{ form_end(form) }}

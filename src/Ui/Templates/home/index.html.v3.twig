@@ -1,0 +1,71 @@
+{# templates/home/index.v3.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}
+  Accueil
+{% endblock %}
+
+{% block body %}
+  <div class="container mt-4">
+    {# ── HERO COMPACT ── #}
+    <div class="mb-4 text-center">
+      <h2 class="fw-bold">
+        Les ados, on les ❤️ … mais GRR 😅
+      </h2>
+      <p class="text-muted mb-3">
+        Un espace pour souffler, rire… et partager.
+      </p>
+      <a href="{{ path('post_create') }}" class="btn btn-success btn-sm">
+        <i class="bi bi-pencil me-1"></i>
+        Partager une anecdote
+      </a>
+    </div>
+
+    {# ── POSTS ── #}
+    {% if pagination is empty %}
+      <p class="text-muted text-center">
+        Aucun post pour le moment.
+      </p>
+    {% else %}
+      <div class="d-flex flex-column gap-4">
+        {% for post in pagination %}
+          <div class="position-relative">
+            {# Signalement discret #}
+            <div class="position-absolute top-0 end-0 p-2">
+              <a href="{{
+                path(
+                  'post_show',
+                  {
+                    id: post.id
+                  }
+                )
+                }}"
+                class="text-muted small text-decoration-none">
+                ⚑
+              </a>
+            </div>
+
+            {{
+              include(
+                'partials/posts/_post_card_with_votes.html.twig',
+                {
+                  post: post,
+                  scores: scores[post.id]|default({}),
+                  userVote: userVote|default(null)
+                }
+              )
+            }}
+          </div>
+        {% endfor %}
+      </div>
+
+      {# ── BOUTON ENCORE ── #}
+      <div class="text-center mt-4">
+        <a href="{{ path('post_recent') }}"
+          class="btn btn-outline-secondary w-100">
+          Encore des anecdotes →
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

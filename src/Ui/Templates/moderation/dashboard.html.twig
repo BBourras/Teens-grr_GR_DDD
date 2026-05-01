@@ -1,0 +1,78 @@
+{# templates/moderation/dashboard.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard Modération{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+
+        {# ── Menu latéral ─────────────────────────────────────────────────── #}
+        <div class="col-md-3 mb-4">
+            {{ include('partials/moderation/_moderation_menu.html.twig', {
+                posts:    posts,
+                comments: comments
+            }) }}
+        </div>
+
+        {# ── Contenu principal ────────────────────────────────────────────── #}
+        <div class="col-md-9">
+
+            {% include 'partials/flash/_flash_messages.html.twig' %}
+
+            {# ── Posts auto-masqués ───────────────────────────────────────── #}
+            <h2 id="posts-section" class="mb-3">
+                Posts auto-masqués
+                {% if posts|length > 0 %}
+                    <span class="badge bg-warning text-dark fs-6">
+                        {{ posts|length }}
+                    </span>
+                {% endif %}
+            </h2>
+
+            {% if posts is empty %}
+                <div class="alert alert-success">
+                    ✅ Aucun post en attente de modération.
+                </div>
+            {% else %}
+                {% for post in posts %}
+                    {{ include('partials/moderation/_post_moderation_item.html.twig', {
+                        post: post
+                    }) }}
+                {% endfor %}
+            {% endif %}
+
+            <hr class="my-4">
+
+            {# ── Commentaires auto-masqués ────────────────────────────────── #}
+            <h2 id="comments-section" class="mb-3">
+                Commentaires auto-masqués
+                {% if comments|length > 0 %}
+                    <span class="badge bg-warning text-dark fs-6">
+                        {{ comments|length }}
+                    </span>
+                {% endif %}
+            </h2>
+
+            {% if comments is empty %}
+                <div class="alert alert-success">
+                    ✅ Aucun commentaire en attente de modération.
+                </div>
+            {% else %}
+                {% for comment in comments %}
+                    {{ include('partials/moderation/_comment_moderation_item.html.twig', {
+                        comment: comment
+                    }) }}
+                {% endfor %}
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {# Propage le champ 'reason' vers les hidden inputs avant soumission #}
+    <script src="{{ asset('js/moderation_reason.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,63 @@
+{# templates/partials/posts/_post_votes.html.twig #}
+
+<div class="vote-section mt-4">
+  {# Boutons de vote avec scores par emoji #}
+  <form method="post"
+    action="{{
+    path(
+      'vote_post',
+      {
+        id: post.id
+      }
+    )
+    }}"
+    class="d-flex flex-wrap gap-2 align-items-center">
+    {# Laugh 😂 #}
+    <button name="type"
+      value="laugh"
+      class="btn btn-sm {{
+      userVote is defined and userVote == 'laugh'
+        ? 'btn-warning active'
+        : 'btn-outline-warning'
+      }}"
+      title="Trop drôle">
+      😂 {{ postScores['laugh']|default(0) }}
+    </button>
+
+    {# Disillusioned 😏 #}
+    <button name="type"
+      value="disillusioned"
+      class="btn btn-sm {{
+      userVote is defined and userVote == 'disillusioned'
+        ? 'btn-secondary active'
+        : 'btn-outline-secondary'
+      }}"
+      title="Tellement vrai…">
+      😏 {{ postScores['disillusioned']|default(0) }}
+    </button>
+
+    {# Angry 😡 #}
+    <button name="type"
+      value="angry"
+      class="btn btn-sm {{
+      userVote is defined and userVote == 'angry'
+        ? 'btn-danger active'
+        : 'btn-outline-danger'
+      }}"
+      title="Énervant">
+      😡 {{ postScores['angry']|default(0) }}
+    </button>
+  </form>
+
+  {# Score pondéré global #}
+  <div class="mt-3 d-flex align-items-center gap-2 text-muted small">
+    <span>Score global :</span>
+    <strong class="{{
+      post.reactionScore < 0
+        ? 'text-danger'
+        : 'text-success'
+      }}">
+      {{ post.reactionScore }}
+    </strong>
+  </div>
+</div>

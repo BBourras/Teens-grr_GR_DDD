@@ -1,0 +1,106 @@
+{# templates/home/index.html.twig #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}
+  Accueil - Teens-GRR
+{% endblock %}
+
+{% block body %}
+  <div class="container mt-4">
+    <div class="row g-5">
+      {# ── COLONNE GAUCHE : Hero éditorial ── #}
+      <div class="col-lg-5">
+        <div class="mb-4 text-center">
+          <h2 class="fw-bold display-5">
+            Les ados, on les ❤️…<br />
+            <span class="text-warning">mais GRR 😅</span>
+          </h2>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body text-center">
+            <p class="mb-3">
+              Parents, profs, éducateurs… besoin d’un sas de décompression ?
+            </p>
+            <p class="fw-semibold mb-4">
+              Souriez ! Vous êtes au bon endroit !
+            </p>
+
+            {% if is_granted('ROLE_USER') %}
+              <a href="{{ path('post_create') }}" class="btn btn-success w-100">
+                <i class="bi bi-plus-circle me-2"></i>
+                Raconter une anecdote
+              </a>
+            {% else %}
+              <a href="{{ path('app_login') }}"
+                class="btn btn-outline-success w-100">
+                Connectez-vous pour publier
+              </a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="alert alert-warning">
+          <div class="small">
+            👉 Pas de mode d’emploi miracle<br />
+            👉 Pas de grande leçon de psychologie<br />
+          </div>
+        </div>
+
+        <ul class="text-muted small lh-lg mt-4">
+          <li>Des anecdotes incroyables… mais vraies</li>
+          <li>Des ados de 12 à 30 ans… et plus !</li>
+          <li>De la dérision… et de l’autodérision</li>
+          <li>Des soupirs… et des rires</li>
+        </ul>
+      </div>
+
+      {# ── COLONNE DROITE : Navigation + Posts récents ── #}
+      <div class="col-lg-7">
+        {# Boutons d’accès rapides #}
+        <div class="d-grid gap-2 d-md-flex justify-content-md-start mb-4">
+          <a href="{{ path('post_trending') }}"
+            class="btn btn-outline-warning flex-fill">
+            <i class="bi bi-trophy me-1"></i> Top du moment
+          </a>
+          <a href="{{ path('post_legend') }}"
+            class="btn btn-outline-secondary flex-fill">
+            <i class="bi bi-bank me-1"></i> Légendes
+          </a>
+          <a href="{{ path('post_recent') }}"
+            class="btn btn-outline-primary flex-fill">
+            <i class="bi bi-rss me-1"></i> Récemment
+          </a>
+        </div>
+
+        <h4 class="mb-3 text-muted">
+          <i class="bi bi-clock-history me-2"></i>
+          Derniers messages publiés
+        </h4>
+
+        {% if pagination is empty %}
+          <p class="text-muted">
+            Aucun post publié récemment.
+          </p>
+        {% else %}
+          <div class="d-flex flex-column gap-4">
+            {% for post in pagination %}
+              {% include 'partials/posts/_post_card.html.twig' with {
+                post: post,
+                postScores: postScores[post.id]|default({}),
+                userVote: null
+              } %}
+            {% endfor %}
+          </div>
+
+          <div class="text-center mt-5">
+            <a href="{{ path('post_recent') }}" class="btn btn-outline-primary">
+              Voir tous les posts récents →
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
