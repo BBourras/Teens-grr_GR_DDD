@@ -5,61 +5,61 @@ declare(strict_types=1);
 namespace App\Domain\ValueObject;
 
 use App\Domain\Contract\ModeratableContentInterface;
+use App\Domain\Entity\Comment;
+use App\Domain\Entity\Post;
 
 /**
- * Value Object représentant une cible de modération.
+ * Value Object immutable représentant une cible de modération ou de signalement.
  *
- * ---------------------------------------------------------
  * RÈGLE ARCHITECTURALE :
- * - Aucun couplage Doctrine (pas d'entité Post/Comment ici)
- * - Représentation minimale et stable d'une cible métier
- * - Utilisable dans services, events, logs, UI
- *
- * ---------------------------------------------------------
- * CONTRAT :
- * Une Target est soit :
- * - un POST (type = post)
- * - un COMMENTAIRE (type = comment)
- *
- * jamais les deux, jamais aucun.
+ * - Aucun couplage direct avec Doctrine ou les entités dans les services/logs.
+ * - Représentation minimale, stable et sécurisée d'une cible métier.
+ * - Utilisable dans Services, Events, Factories, Logs, etc.
  */
 final class Target
 {
-    private const TYPE_POST = 'post';
+    private const TYPE_POST    = 'post';
     private const TYPE_COMMENT = 'comment';
 
     private function __construct(
         private readonly string $type,
-        private readonly int $id
+        private readonly int $id,
+        private readonly ?Post $post = null,
+        private readonly ?Comment $comment = null,
     ) {}
 
     /**
-     * Création d'une Target à partir d'une entité métier modérable.
+     * Crée une Target à partir d'une entité modérable (Post ou Comment).
      */
     public static function fromContent(ModeratableContentInterface $content): self
     {
         return match ($content->getTargetType()) {
-            self::TYPE_POST => new self(self::TYPE_POST, $content->getId()),
-            self::TYPE_COMMENT => new self(self::TYPE_COMMENT, $content->getId()),
-            default => throw new \InvalidArgumentException('Unsupported target type'),
+            self::TYPE_POST => new self(
+                self::TYPE_POST,
+                $content->getId() ?? throw new \InvalidArgumentException('Post ID cannot be null'),
+                post: $content instanceof Post ? $content : null
+            ),
+            self::TYPE_COMMENT => new self(
+                self::TYPE_COMMENT,
+                $content->getId() ?? throw new \InvalidArgumentException('Comment ID cannot be null'),
+                comment: $content instanceof Comment ? $content : null
+            ),
+            default => throw new \InvalidArgumentException('Unsupported target type: ' . $content->getTargetType()),
         };
     }
 
-    /**
-     * Factory directe (utile pour services / logs / events).
-     */
-    public static function post(int $id): self
+    public static function post(int $id, ?Post $post = null): self
     {
-        return new self(self::TYPE_POST, $id);
+        return new self(self::TYPE_POST, $id, post: $post);
     }
 
-    public static function comment(int $id): self
+    public static function comment(int $id, ?Comment $comment = null): self
     {
-        return new self(self::TYPE_COMMENT, $id);
+        return new self(self::TYPE_COMMENT, $id, comment: $comment);
     }
 
     // ======================================================
-    // HELPERS MÉTIER
+    // HELPERS
     // ======================================================
 
     public function isPost(): bool
@@ -82,8 +82,21 @@ final class Target
         return $this->id;
     }
 
+    /**
+     * Retourne l'entité complète si elle a été injectée (utile dans les Factories).
+     */
+    public function getPost(): ?Post
+    {
+        return $this->post;
+    }
+
+    public function getComment(): ?Comment
+    {
+        return $this->comment;
+    }
+
     // ======================================================
-    // SERIALISATION SIMPLE (utile logs / audit / queue)
+    // SERIALISATION
     // ======================================================
 
     public function toArray(): array
