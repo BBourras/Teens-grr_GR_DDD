@@ -1,0 +1,26 @@
+/* .../style/utilities/utilities.css */
+
+/* =========================
+   UTILITIES
+   ========================= */
+
+/* Text */
+.text-center {
+  text-align: center;
+}
+
+/* Margin Top */
+.mt-1 { margin-top: var(--space-xs); }
+.mt-2 { margin-top: var(--space-sm); }
+.mt-3 { margin-top: var(--space-md); }
+.mt-4 { margin-top: var(--space-lg); }
+
+/* Margin X */
+.mx-1 { margin-inline: var(--space-xs); }
+.mx-2 { margin-inline: var(--space-sm); }
+.mx-3 { margin-inline: var(--space-md); }
+
+/* State */
+.is-active {
+  color: var(--color-accent);
+}

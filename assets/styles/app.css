@@ -1,3 +1,26 @@
-body {
-    background-color: skyblue;
-}
+/* =========================
+   MAIN ENTRY POINT
+   ========================= */
+
+/* 1. Abstracts */
+@import './abstracts/variables.css';
+
+/* 2. Bases */
+@import './bases/reset.css';
+@import './bases/base.css';
+
+/* 3. Layout */
+@import './layouts/navbar.css';
+
+/* 4. Components */
+@import './components/badge.css';
+@import './components/button.css';
+@import './components/card.css';
+@import './components/heading.css';
+@import './components/nav-auth.css';
+
+/* 5. Contexts (future DDD) */
+/* @import './contexts/post.css'; */
+
+/* 6. Utilities */
+@import './utilities/utilities.css';

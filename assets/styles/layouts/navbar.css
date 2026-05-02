@@ -1,0 +1,44 @@
+/* .../style/layouts/navbar.css */
+
+/* =========================
+   NAVBAR LAYOUT
+   ========================= */
+
+.navbar {
+  height: var(--navbar-height);
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+/* Link */
+.navbar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--color-surface);
+  transition: color var(--transition-fast);
+}
+
+.navbar__link:hover {
+  color: var(--color-accent);
+}
+
+/* Icon */
+.navbar__icon {
+  color: var(--color-accent);
+  transition: color var(--transition-fast);
+}
+
+.navbar__link:hover .navbar__icon {
+  color: var(--color-surface);
+}
+
+/* Separator */
+.navbar__separator {
+  width: 1px;
+  height: 18px;
+  margin: 0 var(--space-sm);
+  background-color: var(--color-separator);
+}

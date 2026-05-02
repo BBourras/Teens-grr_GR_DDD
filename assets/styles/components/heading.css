@@ -1,0 +1,16 @@
+/* .../style/components/heading.css */
+
+/* =========================
+   HEADING WITH ICON
+   ========================= */
+
+.heading-with-icon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.heading-with-icon__icon {
+  font-size: 1.5rem;
+  color: var(--color-accent);
+}

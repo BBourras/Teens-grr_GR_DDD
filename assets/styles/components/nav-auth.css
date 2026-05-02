@@ -1,0 +1,38 @@
+/* .../style/components/nav-auth.css */
+
+/* =========================
+   NAV AUTH
+   ========================= */
+
+.nav-auth {
+  color: var(--color-surface);
+}
+
+.nav-auth__icon {
+  transition: color var(--transition-fast);
+}
+
+/* Variants */
+.nav-auth--login .nav-auth__icon {
+  color: var(--color-accent);
+}
+
+.nav-auth--login:hover {
+  color: var(--color-accent);
+}
+
+.nav-auth--login:hover .nav-auth__icon {
+  color: var(--color-surface);
+}
+
+.nav-auth--logout .nav-auth__icon {
+  color: var(--color-danger);
+}
+
+.nav-auth--logout:hover {
+  color: var(--color-danger);
+}
+
+.nav-auth--logout:hover .nav-auth__icon {
+  color: var(--color-surface);
+}

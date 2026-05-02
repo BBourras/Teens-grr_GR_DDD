@@ -1,0 +1,42 @@
+
+/* .../style/abstracts/variables.css */
+
+/* =========================
+   DESIGN TOKENS
+   ========================= */
+
+:root {
+  /* Colors */
+  --color-primary: #0d6efd;
+  --color-accent: #ffc107;
+  --color-danger: #dc3545;
+
+  --color-bg: #f8f9fa;
+  --color-surface: #ffffff;
+
+  --color-text: #212529;
+  --color-text-muted: #6c757d;
+
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-separator: #e8dddd;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+
+  /* Motion */
+  --transition-fast: 0.2s ease;
+
+  /* Layout */
+  --navbar-height: 56px;
+}

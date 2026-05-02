@@ -1,0 +1,37 @@
+/* .../style/components/card.css */
+
+/* =========================
+   CARD
+   ========================= */
+
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.card__image {
+  width: 100%;
+}
+
+.card__body {
+  padding: var(--space-md);
+}
+
+.card__title {
+  font-size: 1.1rem;
+  margin-bottom: var(--space-sm);
+}
+
+.card__text {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}

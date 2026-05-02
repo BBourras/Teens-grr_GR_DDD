@@ -1,0 +1,31 @@
+/* .../style/bases/base.css */
+
+/* =========================
+   BASE ELEMENTS
+   ========================= */
+
+body {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.5;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+}
+
+p {
+  margin-bottom: var(--space-md);
+}
+
+/* Links (re-applied after reset) */
+a {
+  color: var(--color-primary);
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-accent);
+}

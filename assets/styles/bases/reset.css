@@ -1,0 +1,40 @@
+/* .../style/bases/reset.css */
+
+/* =========================
+   RESET (MODERNE & SAFE)
+   ========================= */
+
+/* Box sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margins (controlled reset) */
+body,
+h1, h2, h3, h4, h5, h6,
+p,
+figure,
+blockquote {
+  margin: 0;
+}
+
+/* Lists (opt-in clean lists) */
+ul[role="list"],
+ol[role="list"] {
+  list-style: none;
+  padding: 0;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Links reset */
+a {
+  text-decoration: none;
+  color: inherit;
+}

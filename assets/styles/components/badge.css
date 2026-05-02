@@ -1,0 +1,14 @@
+/* .../style/components/badge.css */
+
+/* =========================
+   BADGE
+   ========================= */
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem var(--space-sm);
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-accent);
+  color: #000;
+}

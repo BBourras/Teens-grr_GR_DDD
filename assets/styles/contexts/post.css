@@ -1,0 +1,15 @@
+/* BLOCK */
+/* .post-card {} */
+
+/* ELEMENTS */
+/* .post-card__title {}
+.post-card__excerpt {}
+.post-card__meta {}
+.post-card__author {}
+.post-card__actions {}
+.post-card__stats {} */
+
+/* STATES (métier) */
+/* .post-card--trending {}
+.post-card--reported {}
+.post-card--archived {} */

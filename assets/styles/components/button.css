@@ -1,0 +1,25 @@
+/* .../style/components/button.css */
+
+
+/* =========================
+   BUTTON
+   ========================= */
+
+.btn {
+  display: inline-block;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+/* Variants */
+.btn--primary {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.btn--primary:hover {
+  background-color: var(--color-accent);
+  color: #000;
+}
