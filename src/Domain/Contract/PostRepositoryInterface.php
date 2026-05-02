@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Contract;
 
-
+use App\Domain\Entity\Post;
 use App\Domain\Entity\User;
 
 interface PostRepositoryInterface
@@ -20,7 +20,7 @@ interface PostRepositoryInterface
     public function findTrendingPosts(int $limit = 10): array;
 
     /**
-     * Retourne les posts "légendes" (score durable).
+     * Retourne les posts "légendes" (score durable, sans déclin temporel).
      */
     public function findLegendPosts(int $limit = 10): array;
 

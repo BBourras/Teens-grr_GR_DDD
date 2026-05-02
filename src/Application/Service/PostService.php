@@ -32,57 +32,36 @@ final class PostService
         private readonly EventDispatcherInterface $eventDispatcher,
     ) {}
 
-    /**
-     * Crée un nouveau post avec le statut PUBLISHED par défaut.
-     */
     public function createPost(string $title, string $content, User $author): Post
     {
-        $post = new Post($author, $title, $content);   // constructeur riche recommandé
+        $post = new Post($author, $title, $content);
 
         $this->em->persist($post);
         $this->em->flush();
 
-        // Événement de création (optionnel mais utile pour cohérence)
         $this->eventDispatcher->dispatch(
             new ContentStatusChangedEvent(
                 $post,
                 ContentStatus::PUBLISHED,
                 ContentStatus::PUBLISHED,
-                $author,
-                null
+                $author
             )
         );
 
         return $post;
     }
 
-    /**
-     * Met à jour un post existant (titre/contenu uniquement).
-     * Toute modification de statut passe obligatoirement par ModerationService.
-     */
-    public function update(Post $post, ?string $newTitle = null, ?string $newContent = null): void
+    public function update(Post $post, string $newTitle, string $newContent): void
     {
-        if ($newTitle !== null || $newContent !== null) {
-            $post->updateContent(
-                $newTitle ?? $post->getTitle(),
-                $newContent ?? $post->getContent()
-            );
-        }
-
+        $post->updateContent($newTitle, $newContent);
         $this->em->flush();
     }
 
-    /**
-     * Suppression par l'auteur → passe par la modération pour tracer l'action.
-     */
     public function deleteByAuthor(Post $post, User $author): void
     {
         $this->moderationService->deleteByAuthor($post, $author);
     }
 
-    /**
-     * Suppression physique définitive (très rare, usage admin uniquement).
-     */
     public function hardDelete(Post $post): void
     {
         $this->em->remove($post);
@@ -90,7 +69,7 @@ final class PostService
     }
 
     // ======================================================
-    // LECTURE – Délègue au Repository
+    // LECTURE (délègue au Repository)
     // ======================================================
 
     public function getLatestPosts(int $limit = 10): array
@@ -108,14 +87,11 @@ final class PostService
         return $this->postRepository->findLegendPosts($limit);
     }
 
-    public function getAutoHiddenPosts(): array
+    public function getAutoHiddenPendingPosts(): array
     {
         return $this->postRepository->findAutoHiddenPendingPosts();
     }
 
-    /**
-     * Méthode de commodité : posts visibles d'un auteur (profil utilisateur).
-     */
     public function getVisiblePostsByAuthor(User $author, int $limit = 10): array
     {
         return $this->postRepository->findVisibleByAuthor($author, $limit);

@@ -10,34 +10,30 @@ use App\Domain\Contract\ReportRepositoryInterface;
 use App\Domain\Entity\Comment;
 use App\Domain\Entity\Post;
 use App\Domain\Entity\User;
-use App\Domain\Enum\ContentStatus;
 use App\Domain\Enum\ReportReason;
-use App\Domain\Event\ContentStatusChangedEvent; // si on veut émettre un événement
-use App\Factory\ReportFactory;
-use App\ValueObject\Target;
+use App\Domain\ValueObject\Target;
+use App\Infrastructure\Factory\ReportFactory;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * ReportService – Gestion des signalements et de l’auto-masquage.
  *
- * Responsabilités :
- * - Création d’un signalement (Post ou Comment)
- * - Protection contre les doubles signalements (unicité DB)
- * - Logique d’auto-modération basée sur seuil + ratio
- * - Délégation totale de l’action de masquage à ModerationService
+ * Responsabilités principales :
+ * - Création sécurisée d’un signalement (Post ou Comment)
+ * - Protection contre les doubles signalements
+ * - Logique d’auto-modération basée sur seuil et ratio
+ * - Délégation totale des actions de masquage à ModerationService
  */
 final class ReportService
 {
     private const MIN_REPORT_THRESHOLD = 5;
-    private const RATIO_THRESHOLD      = 0.4;   // reports / score
+    private const RATIO_THRESHOLD      = 0.4;
 
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ReportRepositoryInterface $reportRepository,
         private readonly ModerationServiceInterface $moderationService,
-        private readonly EventDispatcherInterface $eventDispatcher,   // optionnel mais recommandé
     ) {}
 
     // ======================================================
@@ -74,10 +70,9 @@ final class ReportService
     ): void {
         $this->em->wrapInTransaction(function () use ($content, $user, $reason, $reasonDetail) {
 
-            $target = Target::fromContent($content);
-
+            // Création du signalement via Target
             $report = ReportFactory::create(
-                $target,
+                Target::fromContent($content),
                 $user,
                 $reason,
                 $reasonDetail
@@ -88,11 +83,10 @@ final class ReportService
                 $this->em->persist($report);
                 $this->em->flush();
             } catch (UniqueConstraintViolationException) {
-                // L’utilisateur a déjà signalé ce contenu → on sort silencieusement
-                return;
+                return; // Déjà signalé par cet utilisateur
             }
 
-            // Mise à jour du compteur dénormalisé
+            // Mise à jour du compteur
             $content->incrementReportCount();
 
             // Auto-modération si nécessaire
@@ -112,27 +106,33 @@ final class ReportService
 
         $reportCount = $content->getReportCount();
 
-        // Score de popularité (pour pondérer les signalements)
-        $score = $content instanceof Post
-            ? max(1, $content->getReactionScore())
+        $score = $content instanceof Post 
+            ? max(1, $content->getReactionScore()) 
             : 1;
 
         $ratio = $reportCount / $score;
 
         if ($reportCount >= self::MIN_REPORT_THRESHOLD && $ratio >= self::RATIO_THRESHOLD) {
             $this->moderationService->autoHide($content);
-
-            // Optionnel : émettre un événement pour notifier ou logger
-            $this->eventDispatcher->dispatch(
-                new ContentStatusChangedEvent(
-                    $content,
-                    $content->getStatusEnum(), // ancien statut
-                    ContentStatus::AUTO_HIDDEN,
-                    null,
-                    null,
-                    'Auto-masquage après signalements'
-                )
-            );
         }
+    }
+
+    // ======================================================
+    // MÉTHODES DE LECTURE
+    // ======================================================
+
+    public function hasAlreadyReportedPost(Post $post, User $user): bool
+    {
+        return $this->reportRepository->hasAlreadyReportedPost($post, $user);
+    }
+
+    public function hasAlreadyReportedComment(Comment $comment, User $user): bool
+    {
+        return $this->reportRepository->hasAlreadyReportedComment($comment, $user);
+    }
+
+    public function getPendingReports(int $limit = 50): array
+    {
+        return $this->reportRepository->findPendingReports($limit);
     }
 }

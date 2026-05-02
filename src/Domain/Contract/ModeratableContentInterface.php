@@ -9,10 +9,10 @@ use App\Domain\Entity\User;
 use App\Domain\Enum\ContentStatus;
 
 /**
- * Interface pour tout contenu modérable (Post ET Comment).
+ * Interface centrale pour tout contenu modérable (Post ET Comment).
  *
  * Permet un traitement uniforme dans ModerationService, ReportService,
- * Voters, Dashboard, etc. sans avoir à faire de instanceof.
+ * Voters, Dashboard, etc. sans instanceof.
  */
 interface ModeratableContentInterface
 {
@@ -25,14 +25,14 @@ interface ModeratableContentInterface
     public function getAuthor(): User;
 
     /**
-     * Type de cible pour les logs et le polymorphisme ('post' ou 'comment').
+     * Type de cible ('post' ou 'comment').
      */
     public function getTargetType(): string;
 
     /**
      * Retourne le Post parent :
      * - Post   → retourne $this
-     * - Comment→ retourne le post auquel il appartient
+     * - Comment→ retourne le post associé
      */
     public function getPost(): Post;
 

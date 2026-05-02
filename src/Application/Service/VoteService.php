@@ -16,14 +16,12 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 /**
- * VoteService – Couche Application pure.
+ * VoteService – Gestion des votes/réactions.
  *
  * Responsabilités :
- * - Gérer le cycle de vie complet d’un vote (création / mise à jour / suppression)
- * - Appliquer les règles métier : 1 vote par post pour les connectés, rate limit pour les invités
- * - Déclencher uniquement des événements domaine (le scoring est géré par VoteScoreListener)
- *
- * Tout est event-driven : le service ne touche jamais directement reactionScore.
+ * - Appliquer les règles métier (1 vote max par user/post, rate limit pour invités)
+ * - Créer, mettre à jour ou supprimer un vote
+ * - Déclencher uniquement des événements domaine (le calcul du score est géré par un listener)
  */
 final class VoteService
 {
@@ -45,12 +43,7 @@ final class VoteService
 
     public function voteAsGuest(Post $post, string $guestKey, string $guestIpRaw, VoteType $type): void
     {
-        $this->handleVote(
-            $post,
-            $type,
-            guestKey: $guestKey,
-            guestIpRaw: $guestIpRaw
-        );
+        $this->handleVote($post, $type, guestKey: $guestKey, guestIpRaw: $guestIpRaw);
     }
 
     // ======================================================
@@ -66,10 +59,8 @@ final class VoteService
     ): void {
         $this->em->wrapInTransaction(function () use ($post, $type, $user, $guestKey, $guestIpRaw) {
 
-            // Rate limiting uniquement pour les invités
             if ($user === null) {
                 $this->enforceGuestRateLimit($guestIpRaw);
-                $this->assertValidGuestKey($guestKey);
             }
 
             $existingVote = $this->findExistingVote($post, $user, $guestKey);
@@ -79,13 +70,13 @@ final class VoteService
                 return;
             }
 
-            // Même type → on supprime (toggle off)
+            // Toggle : même type → suppression
             if ($existingVote->getType() === $type) {
                 $this->removeVote($existingVote);
                 return;
             }
 
-            // Type différent → on met à jour
+            // Changement de type
             $this->updateVote($existingVote, $type);
         });
     }
@@ -101,17 +92,19 @@ final class VoteService
         ?string $guestKey,
         ?string $guestIpRaw
     ): void {
-        $vote = Vote::createForPost($post, $type);   // constructeur riche recommandé
+        $vote = new Vote($post, $type);
 
         if ($user !== null) {
             $vote->assignUser($user);
         } else {
-            $vote->assignGuest($guestKey, $guestIpRaw ? $this->hashIp($guestIpRaw) : null);
+            $vote->assignGuest($guestKey, $this->hashIp($guestIpRaw));
         }
 
         $this->em->persist($vote);
 
-        $this->dispatchEvent(VoteEvent::CREATED, $post, $vote, null, $type);
+        $this->dispatcher->dispatch(
+            new VoteEvent(VoteEvent::CREATED, $post, $vote, null, $type)
+        );
     }
 
     private function removeVote(Vote $vote): void
@@ -121,7 +114,9 @@ final class VoteService
 
         $this->em->remove($vote);
 
-        $this->dispatchEvent(VoteEvent::REMOVED, $post, $vote, $oldType, null);
+        $this->dispatcher->dispatch(
+            new VoteEvent(VoteEvent::REMOVED, $post, $vote, $oldType, null)
+        );
     }
 
     private function updateVote(Vote $vote, VoteType $newType): void
@@ -129,18 +124,8 @@ final class VoteService
         $oldType = $vote->getType();
         $vote->setType($newType);
 
-        $this->dispatchEvent(VoteEvent::UPDATED, $vote->getPost(), $vote, $oldType, $newType);
-    }
-
-    private function dispatchEvent(
-        string $eventName,
-        Post $post,
-        Vote $vote,
-        ?VoteType $oldType,
-        ?VoteType $newType
-    ): void {
         $this->dispatcher->dispatch(
-            new VoteEvent($eventName, $post, $vote, $oldType, $newType)
+            new VoteEvent(VoteEvent::UPDATED, $vote->getPost(), $vote, $oldType, $newType)
         );
     }
 
@@ -158,26 +143,22 @@ final class VoteService
     private function enforceGuestRateLimit(string $guestIpRaw): void
     {
         $limiter = $this->voteGuestLimiter->create($this->hashIp($guestIpRaw));
-        $result = $limiter->consume(1);
+        $limit = $limiter->consume(1);
 
-        if (!$result->isAccepted()) {
+        if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(
-                retryAfter: $result->getRetryAfter()?->getTimestamp() ?? time() + 30,
-                message: 'Vous avez atteint la limite de votes anonymes (5 par 24h). Revenez plus tard.'
+                retryAfter: $limit->getRetryAfter()?->getTimestamp() ?? time() + 60,
+                message: 'Vous avez atteint la limite de votes anonymes (5 par 24h).'
             );
         }
     }
 
-    private function assertValidGuestKey(?string $guestKey): void
+    private function hashIp(?string $ip): string
     {
-        if (empty($guestKey)) {
-            throw new \LogicException('Une clé invité est obligatoire pour voter en mode anonyme.');
+        if ($ip === null) {
+            return 'unknown_' . uniqid();
         }
-    }
-
-    private function hashIp(string $ip): string
-    {
-        return hash('sha256', $ip . 'salt_for_anonymity'); // sel léger pour plus de sécurité
+        return hash('sha256', $ip . 'teens_grr_salt');
     }
 
     // ======================================================
@@ -187,11 +168,6 @@ final class VoteService
     public function getUserVoteOnPost(Post $post, User $user): ?Vote
     {
         return $this->voteRepository->findOneByUserAndPost($user, $post);
-    }
-
-    public function getGuestVoteOnPost(Post $post, string $guestKey): ?Vote
-    {
-        return $this->voteRepository->findOneByGuestAndPost($guestKey, $post);
     }
 
     public function getVoteScoreByType(Post $post): array

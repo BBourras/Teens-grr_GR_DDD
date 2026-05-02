@@ -11,17 +11,15 @@ use App\Domain\Enum\ContentStatus;
 use App\Domain\Enum\ModerationActionType;
 use App\Domain\Event\ContentStatusChangedEvent;
 use App\Infrastructure\Factory\ModerationActionLogFactory;
-use App\Infrastructure\Persistence\Repository\ModerationActionLogRepository; // si besoin
 use App\Domain\ValueObject\Target;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
-
 /**
- * Service central de modération – Version DDD Light stabilisée.
+ * Service central de modération.
  *
  * Responsable de toutes les transitions de statut sur Post et Comment,
- * avec logging systématique et transitions sécurisées.
+ * avec traçabilité complète via ModerationActionLog.
  */
 final class ModerationService implements ModerationServiceInterface
 {
@@ -36,24 +34,12 @@ final class ModerationService implements ModerationServiceInterface
         User $moderator,
         ?string $reason = null
     ): void {
-        $this->transition(
-            $content,
-            ContentStatus::HIDDEN_BY_MODERATOR,
-            ModerationActionType::MODERATOR_HIDE,
-            $moderator,
-            $reason
-        );
+        $this->transition($content, ContentStatus::HIDDEN_BY_MODERATOR, ModerationActionType::MODERATOR_HIDE, $moderator, $reason);
     }
 
     public function autoHide(ModeratableContentInterface $content): void
     {
-        $this->transition(
-            $content,
-            ContentStatus::AUTO_HIDDEN,
-            ModerationActionType::AUTO_HIDE,
-            null,
-            'Seuil de 5 signalements atteint'
-        );
+        $this->transition($content, ContentStatus::AUTO_HIDDEN, ModerationActionType::AUTO_HIDE, null, 'Seuil de signalements atteint');
     }
 
     public function deleteByModerator(
@@ -61,26 +47,14 @@ final class ModerationService implements ModerationServiceInterface
         User $moderator,
         ?string $reason = null
     ): void {
-        $this->transition(
-            $content,
-            ContentStatus::DELETED,
-            ModerationActionType::MODERATOR_DELETE,
-            $moderator,
-            $reason
-        );
+        $this->transition($content, ContentStatus::DELETED, ModerationActionType::MODERATOR_DELETE, $moderator, $reason);
     }
 
     public function deleteByAuthor(
         ModeratableContentInterface $content,
         User $author
     ): void {
-        $this->transition(
-            $content,
-            ContentStatus::DELETED,
-            ModerationActionType::AUTHOR_DELETE,
-            $author,
-            'Suppression par l’auteur lui-même'
-        );
+        $this->transition($content, ContentStatus::DELETED, ModerationActionType::AUTHOR_DELETE, $author, 'Suppression par l’auteur');
     }
 
     public function restore(
@@ -88,13 +62,7 @@ final class ModerationService implements ModerationServiceInterface
         ?User $moderator = null,
         ?string $reason = null
     ): void {
-        $this->transition(
-            $content,
-            ContentStatus::PUBLISHED,
-            ModerationActionType::RESTORE,
-            $moderator,
-            $reason ?? 'Restauration manuelle'
-        );
+        $this->transition($content, ContentStatus::PUBLISHED, ModerationActionType::RESTORE, $moderator, $reason ?? 'Restauration manuelle');
     }
 
     public function confirmAutoHide(
@@ -102,13 +70,7 @@ final class ModerationService implements ModerationServiceInterface
         User $moderator,
         ?string $reason = null
     ): void {
-        $this->transition(
-            $content,
-            ContentStatus::HIDDEN_BY_MODERATOR,
-            ModerationActionType::REPORTS_CONFIRMED,
-            $moderator,
-            $reason ?? 'Signalements confirmés par modérateur'
-        );
+        $this->transition($content, ContentStatus::HIDDEN_BY_MODERATOR, ModerationActionType::REPORTS_CONFIRMED, $moderator, $reason);
     }
 
     public function rejectReport(
@@ -116,17 +78,11 @@ final class ModerationService implements ModerationServiceInterface
         User $moderator,
         ?string $reason = null
     ): void {
-        $this->transition(
-            $content,
-            ContentStatus::PUBLISHED,
-            ModerationActionType::REPORTS_REJECTED,
-            $moderator,
-            $reason ?? 'Signalements rejetés'
-        );
+        $this->transition($content, ContentStatus::PUBLISHED, ModerationActionType::REPORTS_REJECTED, $moderator, $reason);
     }
 
     // ======================================================
-    // CŒUR : MACHINE À ÉTATS + TRANSACTION
+    // TRANSITION CENTRALE
     // ======================================================
 
     private function transition(
@@ -140,7 +96,7 @@ final class ModerationService implements ModerationServiceInterface
 
             $oldStatus = $content->getStatusEnum();
 
-            if (!$this->isTransitionAllowed($oldStatus, $newStatus)) {
+            if (!$this->isValidTransition($oldStatus, $newStatus)) {
                 throw new \LogicException(sprintf(
                     'Transition de statut interdite : %s → %s',
                     $oldStatus->value,
@@ -148,7 +104,6 @@ final class ModerationService implements ModerationServiceInterface
                 ));
             }
 
-            // Application du nouvel état
             $content->setStatus($newStatus);
 
             if ($newStatus === ContentStatus::DELETED) {
@@ -157,11 +112,9 @@ final class ModerationService implements ModerationServiceInterface
                 $content->setDeletedAt(null);
             }
 
-            // Création et persistance du log
-            $target = Target::fromContent($content);
-
+            // Création du log avec Target
             $log = $this->logFactory->create(
-                $target,
+                Target::fromContent($content),   // ← Correction ici
                 $actionType,
                 $oldStatus,
                 $newStatus,
@@ -171,33 +124,24 @@ final class ModerationService implements ModerationServiceInterface
 
             $this->em->persist($log);
 
-            // Événement domaine (pour listeners, notifications, etc.)
-            $event = new ContentStatusChangedEvent($content, $oldStatus, $newStatus, $actor, $actionType);
-            $this->eventDispatcher->dispatch($event);
+            // Événement domaine
+            $this->eventDispatcher->dispatch(
+                new ContentStatusChangedEvent($content, $oldStatus, $newStatus, $actor, $actionType)
+            );
         });
     }
 
-    /**
-     * Machine à états simplifiée et lisible.
-     */
-    private function isTransitionAllowed(ContentStatus $from, ContentStatus $to): bool
+    private function isValidTransition(ContentStatus $from, ContentStatus $to): bool
     {
         if ($from === $to) {
             return false;
         }
 
         return match ($from) {
-            ContentStatus::PUBLISHED => $to !== ContentStatus::DELETED || true, // on autorise tout sauf vers soi-même
-            ContentStatus::AUTO_HIDDEN => in_array($to, [
-                ContentStatus::PUBLISHED,
-                ContentStatus::HIDDEN_BY_MODERATOR,
-                ContentStatus::DELETED,
-            ], true),
-            ContentStatus::HIDDEN_BY_MODERATOR => in_array($to, [
-                ContentStatus::PUBLISHED,
-                ContentStatus::DELETED,
-            ], true),
-            ContentStatus::DELETED => false, // état terminal
+            ContentStatus::PUBLISHED           => true,
+            ContentStatus::AUTO_HIDDEN         => $to !== ContentStatus::AUTO_HIDDEN,
+            ContentStatus::HIDDEN_BY_MODERATOR => in_array($to, [ContentStatus::PUBLISHED, ContentStatus::DELETED], true),
+            ContentStatus::DELETED             => false, // état terminal
         };
     }
 }
