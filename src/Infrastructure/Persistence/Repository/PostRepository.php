@@ -59,33 +59,51 @@ class PostRepository extends ServiceEntityRepository implements PostRepositoryIn
             ->orderBy('p.createdAt', 'DESC');
     }
 
-    public function findTrendingPosts(int $limit = 10): array
+   public function findTrendingPosts(int $limit = 10): array
     {
         $limit = max(1, (int) $limit);
 
         $conn = $this->getEntityManager()->getConnection();
 
-        // IMPORTANT :
-        // On n'utilise pas de paramètre bindé dans LIMIT (MySQL ne le supporte pas correctement)
         $sql = "
-            SELECT 
-                p.id, p.title, p.content, p.created_at, p.status, p.reaction_score,
-                a.id AS author_id, a.username,
-                (
-                    SUM(CASE WHEN v.type IN ('laugh', 'disillusioned') THEN 1 ELSE 0 END) * 3
-                    - SUM(CASE WHEN v.type = 'angry' THEN 1 ELSE 0 END) * 1.5
-                    + COUNT(v.id) * 0.5
-                ) / POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 6, 1.2) AS rankingScore
+            SELECT p.* 
             FROM post p
-            LEFT JOIN user a ON a.id = p.author_id
-            LEFT JOIN vote v ON v.post_id = p.id
-            WHERE p.status = 'published' AND p.deleted_at IS NULL
-            GROUP BY p.id, a.id
-            ORDER BY rankingScore DESC
+            WHERE p.status = 'published' 
+              AND p.deleted_at IS NULL
+            ORDER BY 
+                (
+                    (
+                        SELECT COUNT(*) FROM vote v 
+                        WHERE v.post_id = p.id 
+                          AND v.type IN ('laugh', 'disillusioned')
+                    ) * 3 
+                    - (
+                        SELECT COUNT(*) FROM vote v 
+                        WHERE v.post_id = p.id 
+                          AND v.type = 'angry'
+                    ) * 1.5 
+                    + (
+                        SELECT COUNT(*) FROM vote v 
+                        WHERE v.post_id = p.id
+                    ) * 0.5
+                ) 
+                / POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 6, 1.2) DESC
             LIMIT $limit
         ";
 
-        return $conn->executeQuery($sql)->fetchAllAssociative();
+        $stmt = $conn->executeQuery($sql, ['limit' => $limit]);
+        $data = $stmt->fetchAllAssociative();
+
+        // Hydratation en objets Post
+        $posts = [];
+        foreach ($data as $row) {
+            $post = $this->find($row['id']);
+            if ($post) {
+                $posts[] = $post;
+            }
+        }
+
+        return $posts;
     }
 
     /**
@@ -95,32 +113,45 @@ class PostRepository extends ServiceEntityRepository implements PostRepositoryIn
      * - Score basé principalement sur les votes positifs
      * - Décroissance temporelle très lente (par jour)
      */
-    public function findLegendPosts(int $limit = 10): array
+public function findLegendPosts(int $limit = 10): array
     {
         $limit = max(1, (int) $limit);
 
         $conn = $this->getEntityManager()->getConnection();
 
-        // IMPORTANT :
-        // Même correction que pour trending : LIMIT direct (pas de paramètre bindé)
         $sql = "
-            SELECT 
-                p.id, p.title, p.content, p.created_at, p.status, p.reaction_score,
-                a.id AS author_id, a.username,
-                (
-                    SUM(CASE WHEN v.type IN ('laugh', 'disillusioned') THEN 1 ELSE 0 END) * 2.5
-                    + COUNT(v.id) * 0.3
-                ) / POW(TIMESTAMPDIFF(DAY, p.created_at, NOW()) + 30, 0.8) AS rankingScore
+            SELECT p.* 
             FROM post p
-            LEFT JOIN user a ON a.id = p.author_id
-            LEFT JOIN vote v ON v.post_id = p.id
-            WHERE p.status = 'published' AND p.deleted_at IS NULL
-            GROUP BY p.id, a.id
-            ORDER BY rankingScore DESC
+            WHERE p.status = 'published' 
+              AND p.deleted_at IS NULL
+            ORDER BY 
+                (
+                    (
+                        SELECT COUNT(*) FROM vote v 
+                        WHERE v.post_id = p.id 
+                          AND v.type IN ('laugh', 'disillusioned')
+                    ) * 2.5 
+                    + (
+                        SELECT COUNT(*) FROM vote v 
+                        WHERE v.post_id = p.id
+                    ) * 0.3
+                ) 
+                / POW(TIMESTAMPDIFF(DAY, p.created_at, NOW()) + 30, 0.8) DESC
             LIMIT $limit
         ";
 
-        return $conn->executeQuery($sql)->fetchAllAssociative();
+        $stmt = $conn->executeQuery($sql, ['limit' => $limit]);
+        $data = $stmt->fetchAllAssociative();
+
+        $posts = [];
+        foreach ($data as $row) {
+            $post = $this->find($row['id']);
+            if ($post) {
+                $posts[] = $post;
+            }
+        }
+
+        return $posts;
     }
 
     // ======================================================
