@@ -16,21 +16,12 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 /**
- * ======================================================
- * 🧠 VoteService
- * ======================================================
+ * VoteService – Gestion des votes/réactions.
  *
  * Responsabilités :
- * - Orchestration métier des votes
- * - Gestion user / guest
- * - Toggle vote
- * - Application des règles anti-abus
- * - Dispatch d'événements domaine
- *
- * ⚠️ IMPORTANT :
- * - Aucune logique SQL ici
- * - Aucune agrégation
- * - Seulement logique métier
+ * - Règles métier (1 vote max par user/post, rate limit invités)
+ * - Création / mise à jour / suppression des votes
+ * - Dispatch d'événements uniquement
  */
 final class VoteService
 {
@@ -41,10 +32,6 @@ final class VoteService
         private readonly EventDispatcherInterface $dispatcher,
     ) {}
 
-    // ======================================================
-    // PUBLIC API
-    // ======================================================
-
     public function voteAsUser(Post $post, User $user, VoteType $type): void
     {
         $this->handleVote($post, $type, user: $user);
@@ -54,10 +41,6 @@ final class VoteService
     {
         $this->handleVote($post, $type, guestKey: $guestKey, guestIpRaw: $guestIpRaw);
     }
-
-    // ======================================================
-    // CORE LOGIC
-    // ======================================================
 
     private function handleVote(
         Post $post,
@@ -74,26 +57,19 @@ final class VoteService
 
             $existingVote = $this->findExistingVote($post, $user, $guestKey);
 
-            // CREATE
             if ($existingVote === null) {
                 $this->createVote($post, $type, $user, $guestKey, $guestIpRaw);
                 return;
             }
 
-            // TOGGLE DELETE
             if ($existingVote->getType() === $type) {
                 $this->removeVote($existingVote);
                 return;
             }
 
-            // UPDATE
             $this->updateVote($existingVote, $type);
         });
     }
-
-    // ======================================================
-    // DOMAIN ACTIONS
-    // ======================================================
 
     private function createVote(
         Post $post,
@@ -102,7 +78,7 @@ final class VoteService
         ?string $guestKey,
         ?string $guestIpRaw
     ): void {
-        $vote = new Vote($post, $type);   // suppose que tu as un constructeur riche
+        $vote = new Vote($post, $type);
 
         if ($user !== null) {
             $vote->assignUser($user);
@@ -139,10 +115,6 @@ final class VoteService
         );
     }
 
-    // ======================================================
-    // HELPERS
-    // ======================================================
-
     private function findExistingVote(Post $post, ?User $user, ?string $guestKey): ?Vote
     {
         return $user !== null
@@ -169,12 +141,19 @@ final class VoteService
     }
 
     // ======================================================
-    // READ HELPERS (UI)
+    // MÉTHODES DE LECTURE POUR LES CONTROLLERS
     // ======================================================
 
-    /**
-     * Récupère les votes groupés par type pour affichage UI
-     */
+    public function getUserVoteOnPost(Post $post, User $user): ?Vote
+    {
+        return $this->voteRepository->findOneByUserAndPost($user, $post);
+    }
+
+    public function getGuestVoteOnPost(Post $post, string $guestKey): ?Vote
+    {
+        return $this->voteRepository->findOneByGuestAndPost($guestKey, $post);
+    }
+
     public function getVoteScoreByType(Post $post): array
     {
         return $this->voteRepository->findScoreByTypeForPost($post);

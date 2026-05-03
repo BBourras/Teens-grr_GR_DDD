@@ -11,17 +11,16 @@ use App\Domain\Entity\User;
 use App\Domain\Enum\ContentStatus;
 use App\Domain\Event\ContentStatusChangedEvent;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Service métier pour la gestion des Posts.
+ * PostService – Service métier pour la gestion des Posts.
  *
- * Responsabilités strictes :
+ * Responsabilités :
  * - Création et mise à jour des posts
- * - Délégation totale de la modération à ModerationService
- * - Lecture des listes publiques et éditoriales
- *
- * Aucune logique de statut ou de masquage ne doit se trouver ici.
+ * - Délégation complète de la modération à ModerationService
+ * - Fourniture des QueryBuilders et listes pour les controllers
  */
 final class PostService
 {
@@ -69,12 +68,12 @@ final class PostService
     }
 
     // ======================================================
-    // LECTURE (délègue au Repository)
+    // LECTURE  (délègue au Repository)
     // ======================================================
 
-    public function getLatestPosts(int $limit = 10): array
+    public function getLatestQueryBuilder(): QueryBuilder
     {
-        return $this->postRepository->findLatestPosts($limit);
+        return $this->postRepository->createLatestQueryBuilder();
     }
 
     public function getTrendingPosts(int $limit = 10): array
