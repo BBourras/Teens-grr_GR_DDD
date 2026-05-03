@@ -6,20 +6,25 @@ namespace App\Infrastructure\Persistence\Repository;
 
 use App\Domain\Contract\VoteRepositoryInterface;
 use App\Domain\Entity\Post;
-use App\Domain\Entity\Vote;
 use App\Domain\Entity\User;
-use App\Domain\Enum\VoteType;
+use App\Domain\Entity\Vote;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repository des votes/réactions.
+ * ======================================================
+ * 📦 VoteRepository
+ * ======================================================
  *
- * Gestion des deux types de votants :
- * - Utilisateur connecté → via la relation User
- * - Invité               → via guestKey
+ * Implémente VoteRepositoryInterface (contrat domaine)
  *
- * La limitation anti-abus pour les invités repose sur guestIpHash (et non sur guestKey).
+ * Responsabilités :
+ * - Accès aux votes
+ * - Agrégations simples
+ * - Recherche user / guest
+ * - Statistiques par post
+ *
+ * ⚠️ Aucune logique métier ici
  */
 class VoteRepository extends ServiceEntityRepository implements VoteRepositoryInterface
 {
@@ -27,6 +32,10 @@ class VoteRepository extends ServiceEntityRepository implements VoteRepositoryIn
     {
         parent::__construct($registry, Vote::class);
     }
+
+    // ======================================================
+    // 🔍 LOOKUPS (EXISTING VOTES)
+    // ======================================================
 
     public function findOneByUserAndPost(User $user, Post $post): ?Vote
     {
@@ -40,9 +49,13 @@ class VoteRepository extends ServiceEntityRepository implements VoteRepositoryIn
     {
         return $this->findOneBy([
             'guestKey' => $guestKey,
-            'post'     => $post,
+            'post' => $post,
         ]);
     }
+
+    // ======================================================
+    // 📊 BASIC STATS
+    // ======================================================
 
     public function countByPost(Post $post): int
     {
@@ -54,45 +67,54 @@ class VoteRepository extends ServiceEntityRepository implements VoteRepositoryIn
             ->getSingleScalarResult();
     }
 
+    /**
+     * Liste complète des votes d’un post
+     */
     public function findAllByPost(Post $post): array
     {
-        return $this->findBy(['post' => $post], ['createdAt' => 'DESC']);
+        return $this->findBy(
+            ['post' => $post],
+            ['createdAt' => 'DESC']
+        );
     }
 
+    // ======================================================
+    // 📊 VOTES GROUPÉS PAR TYPE
+    // ======================================================
+
     /**
-     * Retourne le nombre de votes par type pour un post.
-     *
-     * @return array<string, int>  ex: ['laugh' => 12, 'angry' => 3, 'disillusioned' => 8]
+     * Retourne :
+     * [
+     *   'LAUGH' => 12,
+     *   'ANGRY' => 3,
+     *   ...
+     * ]
      */
     public function findScoreByTypeForPost(Post $post): array
     {
         $rows = $this->createQueryBuilder('v')
-            ->select('v.type AS type, COUNT(v.id) AS voteCount')
+            ->select('v.type AS type, COUNT(v.id) AS count')
             ->where('v.post = :post')
             ->groupBy('v.type')
             ->setParameter('post', $post)
             ->getQuery()
-            ->getResult();
+            ->getArrayResult();
 
-        // Initialisation à zéro pour tous les types
-        $score = [];
-        foreach (VoteType::cases() as $case) {
-            $score[$case->value] = 0;
-        }
+        $result = [];
 
-        // Remplissage avec les résultats réels
         foreach ($rows as $row) {
-            $key = $row['type'] instanceof VoteType 
-                ? $row['type']->value 
-                : (string) $row['type'];
-            $score[$key] = (int) $row['voteCount'];
+            $result[$row['type']] = (int) $row['count'];
         }
 
-        return $score;
+        return $result;
     }
 
+    // ======================================================
+    // 🚫 ANTI-SPAM (GUEST IP)
+    // ======================================================
+
     /**
-     * Compte les votes récents d’un invité identifié par son IP hashée (anti-abus).
+     * Compte les votes récents d’un invité (rate limiting)
      */
     public function countRecentVotesByIpHash(
         Post $post,

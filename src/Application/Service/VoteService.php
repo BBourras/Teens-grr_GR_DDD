@@ -16,12 +16,21 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 /**
- * VoteService – Gestion des votes/réactions.
+ * ======================================================
+ * 🧠 VoteService
+ * ======================================================
  *
  * Responsabilités :
- * - Appliquer les règles métier (1 vote max par user/post, rate limit pour invités)
- * - Créer, mettre à jour ou supprimer un vote
- * - Déclencher uniquement des événements domaine (le calcul du score est géré par un listener)
+ * - Orchestration métier des votes
+ * - Gestion user / guest
+ * - Toggle vote
+ * - Application des règles anti-abus
+ * - Dispatch d'événements domaine
+ *
+ * ⚠️ IMPORTANT :
+ * - Aucune logique SQL ici
+ * - Aucune agrégation
+ * - Seulement logique métier
  */
 final class VoteService
 {
@@ -33,7 +42,7 @@ final class VoteService
     ) {}
 
     // ======================================================
-    // API PUBLIQUE
+    // PUBLIC API
     // ======================================================
 
     public function voteAsUser(Post $post, User $user, VoteType $type): void
@@ -47,7 +56,7 @@ final class VoteService
     }
 
     // ======================================================
-    // LOGIQUE CENTRALE
+    // CORE LOGIC
     // ======================================================
 
     private function handleVote(
@@ -65,24 +74,25 @@ final class VoteService
 
             $existingVote = $this->findExistingVote($post, $user, $guestKey);
 
+            // CREATE
             if ($existingVote === null) {
                 $this->createVote($post, $type, $user, $guestKey, $guestIpRaw);
                 return;
             }
 
-            // Toggle : même type → suppression
+            // TOGGLE DELETE
             if ($existingVote->getType() === $type) {
                 $this->removeVote($existingVote);
                 return;
             }
 
-            // Changement de type
+            // UPDATE
             $this->updateVote($existingVote, $type);
         });
     }
 
     // ======================================================
-    // ACTIONS MÉTIER
+    // DOMAIN ACTIONS
     // ======================================================
 
     private function createVote(
@@ -92,7 +102,7 @@ final class VoteService
         ?string $guestKey,
         ?string $guestIpRaw
     ): void {
-        $vote = new Vote($post, $type);
+        $vote = new Vote($post, $type);   // suppose que tu as un constructeur riche
 
         if ($user !== null) {
             $vote->assignUser($user);
@@ -109,8 +119,8 @@ final class VoteService
 
     private function removeVote(Vote $vote): void
     {
-        $post = $vote->getPost();
         $oldType = $vote->getType();
+        $post = $vote->getPost();
 
         $this->em->remove($vote);
 
@@ -148,28 +158,23 @@ final class VoteService
         if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(
                 retryAfter: $limit->getRetryAfter()?->getTimestamp() ?? time() + 60,
-                message: 'Vous avez atteint la limite de votes anonymes (5 par 24h).'
+                message: 'Trop de votes anonymes. Réessayez plus tard.'
             );
         }
     }
 
     private function hashIp(?string $ip): string
     {
-        if ($ip === null) {
-            return 'unknown_' . uniqid();
-        }
-        return hash('sha256', $ip . 'teens_grr_salt');
+        return hash('sha256', ($ip ?? 'unknown') . 'teens_grr_salt_2026');
     }
 
     // ======================================================
-    // MÉTHODES DE LECTURE (commodité)
+    // READ HELPERS (UI)
     // ======================================================
 
-    public function getUserVoteOnPost(Post $post, User $user): ?Vote
-    {
-        return $this->voteRepository->findOneByUserAndPost($user, $post);
-    }
-
+    /**
+     * Récupère les votes groupés par type pour affichage UI
+     */
     public function getVoteScoreByType(Post $post): array
     {
         return $this->voteRepository->findScoreByTypeForPost($post);

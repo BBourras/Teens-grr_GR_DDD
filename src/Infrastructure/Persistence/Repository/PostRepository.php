@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Repository;
 
+use App\Domain\Contract\PostRepositoryInterface;
 use App\Domain\Entity\Post;
 use App\Domain\Entity\User;
 use App\Domain\Enum\ContentStatus;
-use App\Domain\Enum\VoteType;
-use App\Domain\Contract\PostRepositoryInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
@@ -16,34 +15,20 @@ use Doctrine\Persistence\ManagerRegistry;
 /**
  * Repository principal des Posts.
  *
- * Optimisations systématiques :
- * - Tous les classements sont calculés en SQL (pas de tri PHP)
- * - L'auteur est joint en EAGER sur toutes les listes pour éviter le N+1 en affichage Twig
+ * Stratégie choisie :
+ * - DQL pour les requêtes simples et lisibles (latest, profil, modération)
+ * - SQL natif pour les classements complexes (trending + legend) afin d'utiliser
+ *   TIMESTAMPDIFF + POW sans créer de fonctions Doctrine supplémentaires.
  *
- * Compatibilité base de données :
- * - Les fonctions TIMESTAMPDIFF() et POWER() sont natives MySQL / MariaDB. 
+ * Optimisations :
+ * - Jointure systématique sur l'auteur pour éviter le N+1 dans Twig
+ * - Calcul du ranking côté base de données
  */
 class PostRepository extends ServiceEntityRepository implements PostRepositoryInterface
 {
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Post::class);
-    }
-
-    /**
-     * ⚠️ IMPORTANT :
-     * Cette méthode existe déjà dans ServiceEntityRepository,
-     * on la redéclare uniquement pour l’IDE (pas nécessaire en runtime).
-     */
-
-    /**
-     * @param int|string|null $id
-     * @param int|null $lockMode
-     * @param int|string|null $lockVersion
-     */
-    public function find($id, $lockMode = null, $lockVersion = null): ?Post
-    {
-        return parent::find($id, $lockMode, $lockVersion);
     }
 
     // ======================================================
@@ -70,63 +55,115 @@ class PostRepository extends ServiceEntityRepository implements PostRepositoryIn
     }
 
     // ======================================================
-    // CLASSEMENTS ÉDITORIAUX
+    // 🔥 TRENDING POSTS
     // ======================================================
 
+    /**
+     * Posts trending (du moment).
+     *
+     * Algorithme type Reddit/Hacker News :
+     * score = (votes pondérés) / (âge en heures + 6)^1.2
+     */
     public function findTrendingPosts(int $limit = 10): array
     {
-        return $this->createQueryBuilder('p')
-            ->leftJoin('p.author', 'a')
-            ->addSelect('a')
-            ->leftJoin('p.votes', 'v')
-            ->where('p.status = :status')
-            ->andWhere('p.deletedAt IS NULL')
-            ->setParameter('status', ContentStatus::PUBLISHED)
-            ->addSelect('
+        $limit = max(1, (int) $limit);
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = "
+            SELECT 
+                p.id,
+                p.title,
+                p.content,
+                p.created_at,
+                p.status,
+                p.reaction_score,
+
+                a.id AS author_id,
+                a.username,
+
                 (
-                    SUM(CASE WHEN v.type IN (:humourTypes) THEN 1 ELSE 0 END) * 3
-                    - SUM(CASE WHEN v.type = :angry THEN 1 ELSE 0 END) * 1.5
+                    SUM(CASE WHEN v.type IN ('laugh', 'disillusioned') THEN 1 ELSE 0 END) * 3
+                    - SUM(CASE WHEN v.type = 'angry' THEN 1 ELSE 0 END) * 1.5
                     + COUNT(v.id) * 0.5
-                )
-                / POWER(
-                    TIMESTAMPDIFF(HOUR, p.createdAt, CURRENT_TIMESTAMP()) + 6,
+                ) 
+                / POW(
+                    TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 6,
                     1.2
-                ) AS HIDDEN rankingScore
-            ')
-            ->groupBy('p.id, a.id')
-            ->orderBy('rankingScore', 'DESC')
-            ->setMaxResults($limit)
-            ->setParameter('humourTypes', [
-                VoteType::LAUGH->value,
-                VoteType::DISILLUSIONED->value
-            ])
-            ->setParameter('angry', VoteType::ANGRY->value)
-            ->getQuery()
-            ->getResult();
+                ) AS rankingScore
+
+            FROM post p
+            LEFT JOIN user a ON a.id = p.author_id
+            LEFT JOIN vote v ON v.post_id = p.id
+
+            WHERE p.status = 'published'
+              AND p.deleted_at IS NULL
+
+            GROUP BY p.id, a.id
+            ORDER BY rankingScore DESC
+            LIMIT :limit
+        ";
+
+        return $conn->executeQuery($sql, ['limit' => $limit])->fetchAllAssociative();
     }
 
+    // ======================================================
+    // 🏆 LEGEND POSTS
+    // ======================================================
+
+    /**
+     * Legend Posts : les posts qui restent excellents sur la durée.
+     *
+     * Algorithme :
+     * - Score basé principalement sur les votes positifs
+     * - Décroissance temporelle très lente (par jour)
+     * - Favorise les posts qui ont accumulé beaucoup d'engagement sur le long terme
+     */
     public function findLegendPosts(int $limit = 10): array
     {
-        return $this->createQueryBuilder('p')
-            ->leftJoin('p.author', 'a')
-            ->addSelect('a')
-            ->leftJoin('p.votes', 'v')
-            ->where('p.status = :status')
-            ->andWhere('p.deletedAt IS NULL')
-            ->setParameter('status', ContentStatus::PUBLISHED)
-            ->addSelect('
-                SUM(CASE WHEN v.type IN (:humourTypes) THEN 1 ELSE 0 END) * 2 AS HIDDEN rankingScore
-            ')
-            ->groupBy('p.id, a.id')
-            ->orderBy('rankingScore', 'DESC')
-            ->setMaxResults($limit)
-            ->setParameter('humourTypes', [
-                VoteType::LAUGH->value,
-                VoteType::DISILLUSIONED->value
-            ])
-            ->getQuery()
-            ->getResult();
+        $limit = max(1, (int) $limit);
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = "
+            SELECT 
+                p.id,
+                p.title,
+                p.content,
+                p.created_at,
+                p.status,
+                p.reaction_score,
+
+                a.id AS author_id,
+                a.username,
+
+                (
+                    SUM(CASE WHEN v.type IN ('laugh', 'disillusioned') THEN 1 ELSE 0 END) * 2.5
+                    + COUNT(v.id) * 0.3
+                ) 
+                / POW(
+                    TIMESTAMPDIFF(DAY, p.created_at, NOW()) + 30,   -- très lente décroissance
+                    0.8
+                ) AS rankingScore
+
+            FROM post p
+            LEFT JOIN user a ON a.id = p.author_id
+            LEFT JOIN vote v ON v.post_id = p.id
+
+            WHERE p.status = 'published'
+              AND p.deleted_at IS NULL
+
+            GROUP BY p.id, a.id
+            ORDER BY rankingScore DESC
+            LIMIT :limit
+        ";
+
+        return $conn->executeQuery($sql, ['limit' => $limit])->fetchAllAssociative();
     }
+
+    // ======================================================
+    // MODÉRATION
+    // ======================================================
 
     public function findAutoHiddenPendingPosts(): array
     {
@@ -140,6 +177,10 @@ class PostRepository extends ServiceEntityRepository implements PostRepositoryIn
             ->getQuery()
             ->getResult();
     }
+
+    // ======================================================
+    // PROFIL UTILISATEUR
+    // ======================================================
 
     public function findVisibleByAuthor(User $author, int $limit = 10): array
     {
@@ -156,6 +197,10 @@ class PostRepository extends ServiceEntityRepository implements PostRepositoryIn
             ->getQuery()
             ->getResult();
     }
+
+    // ======================================================
+    // STATISTIQUES
+    // ======================================================
 
     public function countVisible(): int
     {

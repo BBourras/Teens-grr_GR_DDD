@@ -10,6 +10,7 @@ use App\Domain\Entity\Vote;
 use DateTimeInterface;
 
 interface VoteRepositoryInterface
+
 {
     public function findOneByUserAndPost(User $user, Post $post): ?Vote;
 
