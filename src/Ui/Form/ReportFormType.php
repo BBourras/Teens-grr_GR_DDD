@@ -13,10 +13,13 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Formulaire de signalement d’un contenu (Post ou Comment).
+ */
 final class ReportFormType extends AbstractType
 {
     public function __construct(
-        private readonly ReportReasonFormatter $formatter,
+        private readonly ReportReasonFormatter $formatter
     ) {}
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -26,22 +29,26 @@ final class ReportFormType extends AbstractType
                 'class'        => ReportReason::class,
                 'label'        => 'Raison du signalement',
                 'choice_label' => fn(ReportReason $reason) => $this->formatter->label($reason),
-                'placeholder'  => 'Choisissez une raison...',
+                'placeholder'  => 'Choisissez une raison…',
                 'required'     => true,
                 'constraints'  => [
-                    new Assert\NotNull(message: 'Vous devez choisir une raison.'),
+                    new Assert\NotBlank(message: 'Vous devez choisir une raison.'),
                 ],
             ])
+
             ->add('reason_detail', TextareaType::class, [
                 'label'    => 'Précisions supplémentaires (facultatif)',
                 'required' => false,
                 'attr'     => [
-                    'rows'        => 4,
-                    'placeholder' => 'Détails, contexte, lien...',
+                    'rows'        => 5,
+                    'placeholder' => 'Décrivez brièvement pourquoi vous signalez ce contenu...',
                     'maxlength'   => 1000,
                 ],
                 'constraints' => [
-                    new Assert\Length(max: 1000),
+                    new Assert\Length(
+                        max: 1000,
+                        maxMessage: 'Les précisions ne peuvent pas dépasser {{ limit }} caractères.'
+                    ),
                 ],
             ])
         ;
@@ -50,7 +57,7 @@ final class ReportFormType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'data_class' => null,   // On utilise ReportFactory
+            'data_class' => null,   // L'entité est créée via ReportFactory
         ]);
     }
 }

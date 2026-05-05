@@ -1,8 +1,30 @@
+# config/packages/rate_limiter.yaml
+
 framework:
     rate_limiter:
-     # Limiteur spécifique aux votes des invités
+
+        # ======================================================
+        # VOTES ANONYMES (GUESTS)
+        # ======================================================
+        # Règle métier : max 5 votes par invité toutes les 24h
         vote_guest:
             policy: sliding_window
-            limit: 5           # max 5 tentatives...
-            interval: '60 seconds'  # ...toutes les 60 secondes
-            cache_pool: cache.app   # ou redis si tu as
+            limit: 5
+            interval: '24 hours'          
+            # cache_pool: cache.app         # Tu peux passer à Redis plus tard
+
+        # ======================================================
+        # INSCRIPTION (anti-spam / bots)
+        # ======================================================
+        registration:
+            policy: fixed_window
+            limit: 3
+            interval: '1 hour'
+
+        # ======================================================
+        # SIGNALEMENTS (éviter les abus)
+        # ======================================================
+        # report:
+        #     policy: sliding_window
+        #     limit: 10
+        #     interval: '1 hour'

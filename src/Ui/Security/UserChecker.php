@@ -11,16 +11,16 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
 /**
- * Vérifications de l'état du compte lors de l'authentification.
+ * UserChecker – Vérifications supplémentaires lors de l'authentification.
  *
- * Double protection avec les Voters :
- * - UserChecker bloque à la CONNEXION (checkPreAuth)
- * - Voters bloquent à l'ACTION
+ * Double couche de sécurité :
+ * - checkPreAuth  → avant validation du mot de passe
+ * - checkPostAuth → après validation du mot de passe
  */
-class UserChecker implements UserCheckerInterface
+final class UserChecker implements UserCheckerInterface
 {
     /**
-     * Vérifie l'état du compte AVANT la validation du mot de passe.
+     * Vérifications avant authentification (mot de passe).
      */
     public function checkPreAuth(UserInterface $user): void
     {
@@ -28,18 +28,19 @@ class UserChecker implements UserCheckerInterface
             return;
         }
 
-        if (in_array('ROLE_BANNED', $user->getRoles(), true)) {
+        if ($user->isBanned()) {
             throw new CustomUserMessageAccountStatusException(
-                'Votre compte a été suspendu. Contactez un administrateur.'
+                'Votre compte a été suspendu. Contactez un administrateur si vous pensez qu’il s’agit d’une erreur.'
             );
         }
     }
 
     /**
-     * Vérifie l'état du compte APRÈS la validation du mot de passe.
+     * Vérifications après authentification réussie.
+     * (Pour futures évolutions : 2FA, expiration de mot de passe, etc.)
      */
     public function checkPostAuth(UserInterface $user, ?TokenInterface $token = null): void
     {
-        // Cas futurs : 2FA, expiration password, etc.
+        // Pour l'instant : rien de particulier
     }
 }

@@ -1,6 +1,6 @@
 security:
     password_hashers:
-        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: "auto"
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
     role_hierarchy:
         ROLE_MODERATOR: ROLE_USER
@@ -26,42 +26,43 @@ security:
                 login_path: app_login
                 check_path: app_login
                 enable_csrf: true
+                default_target_path: app_home
 
             logout:
                 path: app_logout
                 target: app_home
 
+            # Protection anti-bruteforce
             login_throttling:
                 max_attempts: 5
                 interval: '15 minutes'
 
+    # ====================== Contrôle d'accès ======================
     access_control:
 
-        # ====================== Pages totalement publiques ======================
-        - { path: ^/login$, roles: PUBLIC_ACCESS }
-        - { path: ^/register$, roles: PUBLIC_ACCESS }
-        - { path: ^/$, roles: PUBLIC_ACCESS }
+        # Pages totalement publiques
+        - { path: '^/login$', roles: PUBLIC_ACCESS }
+        - { path: '^/register$', roles: PUBLIC_ACCESS }
+        - { path: '^/$', roles: PUBLIC_ACCESS }
 
-        # ====================== Lecture des posts (public) ======================
-        - { path: ^/posts/?$, roles: PUBLIC_ACCESS, methods: [GET] }
-        - { path: ^/posts/\d+$, roles: PUBLIC_ACCESS, methods: [GET] }
+        # Lecture des contenus (posts + trending + legends)
+        - { path: '^/posts/?$', roles: PUBLIC_ACCESS, methods: ['GET'] }
+        - { path: '^/posts/\d+$', roles: PUBLIC_ACCESS, methods: ['GET'] }
 
-        # ====================== Votes (ouverts aux invités + connectés) ======================
-        - { path: ^/posts/\d+/vote$, roles: PUBLIC_ACCESS, methods: [POST] }
+        # Votes (ouverts aux invités également)
+        - { path: '^/posts/\d+/vote$', roles: PUBLIC_ACCESS, methods: ['POST'] }
 
-        # ====================== Actions réservées aux utilisateurs connectés ======================
-        - { path: ^/posts/new$, roles: ROLE_USER }
-        - { path: ^/posts/\d+/edit$, roles: ROLE_USER }
-        - { path: ^/posts/\d+/delete$, roles: ROLE_USER, methods: [POST] }
+        # Actions réservées aux utilisateurs connectés
+        - { path: '^/posts/new$', roles: ROLE_USER }
+        - { path: '^/posts/\d+/(edit|delete)$', roles: ROLE_USER, methods: ['GET', 'POST'] }
+        - { path: '^/posts/\d+/comments$', roles: ROLE_USER, methods: ['POST'] }
+        - { path: '^/posts/\d+/comments/\d+/delete$', roles: ROLE_USER, methods: ['POST'] }
 
-        - { path: ^/posts/\d+/comments$, roles: ROLE_USER, methods: [POST] }
-        - { path: ^/posts/\d+/comments/\d+/delete$, roles: ROLE_USER, methods: [POST] }
+        # Signalements
+        - { path: '^/reports/', roles: ROLE_USER }
 
-        # ====================== Signalements (uniquement connectés) ======================
-        - { path: ^/reports/, roles: ROLE_USER, methods: [POST] }
+        # Modération
+        - { path: '^/moderation', roles: ROLE_MODERATOR }
 
-        # ====================== Modération ======================
-        - { path: ^/moderation, roles: ROLE_MODERATOR }
-
-        # ====================== Dashboard utilisateur ======================
-        - { path: ^/my-account, roles: ROLE_USER }
+        # Compte utilisateur
+        - { path: '^/my-account', roles: ROLE_USER }

@@ -20,19 +20,19 @@ final class CommentFormType extends AbstractType
     {
         $builder
             ->add('content', TextareaType::class, [
-                'label' => false,   // On met le label dans le template pour plus de flexibilité
+                'label' => 'Votre commentaire',
                 'constraints' => [
                     new Assert\NotBlank(message: 'Le commentaire ne peut pas être vide.'),
                     new Assert\Length(
                         min: 3,
                         max: 2000,
-                        minMessage: 'Le commentaire doit contenir au moins {{ limit }} caractères.',
+                        minMessage: 'Le commentaire doit faire au moins {{ limit }} caractères.',
                         maxMessage: 'Le commentaire ne peut pas dépasser {{ limit }} caractères.'
                     ),
                 ],
                 'attr' => [
-                    'rows'        => 5,
-                    'placeholder' => 'Votre réaction ironique ou votre anecdote...',
+                    'rows'        => 6,
+                    'placeholder' => 'Votre réaction au post…',
                     'maxlength'   => 2000,
                 ],
             ])

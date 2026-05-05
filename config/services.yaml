@@ -49,3 +49,8 @@ services:
     # ======================================================
     Symfony\Component\RateLimiter\RateLimiterFactory $voteGuestLimiter:
         alias: limiter.vote_guest
+    
+    # Alias pour le rate limiter d'inscription
+    App\Ui\Controller\Security\RegistrationController:
+        arguments:
+            $limiterRegistration: '@limiter.registration'

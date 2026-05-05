@@ -9,6 +9,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
+/**
+ * SecurityController – Gestion du login et logout.
+ */
 class SecurityController extends AbstractController
 {
     #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
@@ -20,10 +23,7 @@ class SecurityController extends AbstractController
             return $this->redirectToRoute('app_home');
         }
 
-        // Dernière erreur de connexion (credentials invalides, compte banni, etc.)
         $error = $authenticationUtils->getLastAuthenticationError();
-
-        // Dernier identifiant saisi (pré-remplit le champ email)
         $lastUsername = $authenticationUtils->getLastUsername();
 
         return $this->render('security/login.html.twig', [
@@ -33,16 +33,14 @@ class SecurityController extends AbstractController
     }
 
     /**
-     * La déconnexion est interceptée par le firewall Symfony avant
-     * d'atteindre ce corps de méthode. La LogicException garantit
-     * qu'un appel direct (hors firewall) échoue explicitement.
+     * Route de déconnexion.
+     * Cette méthode n'est jamais exécutée : elle est interceptée par le firewall Symfony.
      */
-    #[Route('/logout', name: 'app_logout')]
+    #[Route('/logout', name: 'app_logout', methods: ['GET'])]
     public function logout(): never
     {
         throw new \LogicException(
-            'Cette route est interceptée par le firewall. '
-            . 'Vérifiez la configuration de security.yaml.'
+            'Cette route est interceptée par le firewall Symfony. Vérifiez votre configuration security.yaml.'
         );
     }
 }

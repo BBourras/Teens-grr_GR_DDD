@@ -6,7 +6,6 @@ namespace App\Ui\Controller\Security;
 
 use App\Domain\Entity\User;
 use App\Ui\Form\RegistrationFormType;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +14,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface;
 use Symfony\Component\Security\Http\Authenticator\FormLoginAuthenticator;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 class RegistrationController extends AbstractController
 {
@@ -23,14 +23,23 @@ class RegistrationController extends AbstractController
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly UserAuthenticatorInterface $userAuthenticator,
         private readonly FormLoginAuthenticator $formLoginAuthenticator,
+        private readonly RateLimiterFactory $limiterRegistration,   // ← Nom changé
     ) {}
 
     #[Route('/register', name: 'app_register', methods: ['GET', 'POST'])]
     public function register(Request $request): Response
     {
-        // Redirection si déjà connecté
         if ($this->getUser()) {
             return $this->redirectToRoute('app_home');
+        }
+
+        // Rate limiting
+        $limiter = $this->limiterRegistration->create($request->getClientIp() ?? 'anonymous');
+        $limit = $limiter->consume(1);
+
+        if (!$limit->isAccepted()) {
+            $this->addFlash('error', 'Trop de tentatives d’inscription. Veuillez réessayer plus tard.');
+            return $this->redirectToRoute('app_register');
         }
 
         $user = new User();
@@ -38,32 +47,22 @@ class RegistrationController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-
-            // Hash du mot de passe
             $plainPassword = $form->get('plainPassword')->getData();
+
             $user->setPassword(
                 $this->passwordHasher->hashPassword($user, $plainPassword)
             );
 
-            try {
-                $this->em->persist($user);
-                $this->em->flush();
+            $this->em->persist($user);
+            $this->em->flush();
 
-                $this->addFlash('success', 'Votre compte a été créé avec succès ! Vous êtes maintenant connecté.');
+            $this->addFlash('success', 'Votre compte a été créé avec succès !');
 
-                // Connexion automatique après inscription
-                return $this->userAuthenticator->authenticateUser(
-                    $user,
-                    $this->formLoginAuthenticator,
-                    $request
-                ) ?? $this->redirectToRoute('app_home');
-
-            } catch (UniqueConstraintViolationException) {
-                $this->addFlash(
-                    'error',
-                    'Cet email ou ce pseudo est déjà utilisé. Veuillez en choisir un autre.'
-                );
-            }
+            return $this->userAuthenticator->authenticateUser(
+                $user,
+                $this->formLoginAuthenticator,
+                $request
+            ) ?? $this->redirectToRoute('app_home');
         }
 
         return $this->render('security/register.html.twig', [

@@ -25,11 +25,16 @@ final class RegistrationFormType extends AbstractType
             ->add('email', EmailType::class, [
                 'label' => 'Adresse email',
                 'constraints' => [
-                    new Assert\NotBlank(message: 'L’email est obligatoire.'),
-                    new Assert\Email(message: 'Cet email n’est pas valide.'),
+                    new Assert\NotBlank(message: 'L’adresse email est obligatoire.'),
+                    new Assert\Email(message: 'L’adresse email {{ value }} n’est pas valide.'),
+                    new Assert\Length(max: 180),
                 ],
-                'attr' => ['placeholder' => 'vous@exemple.fr'],
+                'attr' => [
+                    'placeholder'  => 'adresse@mail.fr',
+                    'autocomplete' => 'email',
+                ],
             ])
+
             ->add('username', TextType::class, [
                 'label' => 'Pseudo',
                 'constraints' => [
@@ -40,24 +45,31 @@ final class RegistrationFormType extends AbstractType
                         message: 'Le pseudo ne peut contenir que lettres, chiffres, tirets et underscores.'
                     ),
                 ],
-                'attr' => ['placeholder' => 'MonPseudoIronique'],
-            ])
-            ->add('plainPassword', RepeatedType::class, [
-                'type' => PasswordType::class,
-                'mapped' => false,
-                'invalid_message' => 'Les deux mots de passe doivent correspondre.',
-                'first_options' => [
-                    'label' => 'Mot de passe',
-                    'attr' => ['placeholder' => '••••••••'],
+                'attr' => [
+                    'placeholder'  => 'MonPseudoIronique',
+                    'autocomplete' => 'username',
                 ],
-                'second_options' => [
+            ])
+
+            ->add('plainPassword', RepeatedType::class, [
+                'type'            => PasswordType::class,
+                'mapped'          => false,
+                'invalid_message' => 'Les mots de passe ne correspondent pas.',
+                'first_options'   => [
+                    'label' => 'Mot de passe',
+                    'attr'  => ['autocomplete' => 'new-password'],
+                ],
+                'second_options'  => [
                     'label' => 'Confirmer le mot de passe',
-                    'attr' => ['placeholder' => '••••••••'],
+                    'attr'  => ['autocomplete' => 'new-password'],
                 ],
                 'constraints' => [
                     new Assert\NotBlank(message: 'Le mot de passe est obligatoire.'),
-                    new Assert\Length(min: 8),
-                    new Assert\PasswordStrength(minScore: Assert\PasswordStrength::STRENGTH_MEDIUM),
+                    new Assert\Length(min: 8, max: 4096),
+                    new Assert\PasswordStrength(
+                        minScore: Assert\PasswordStrength::STRENGTH_MEDIUM,
+                        message: 'Le mot de passe est trop faible. Utilisez au moins 8 caractères avec lettres, chiffres ou symboles.'
+                    ),
                 ],
             ])
         ;

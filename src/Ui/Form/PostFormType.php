@@ -13,7 +13,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Formulaire de création / modification d’un Post.
+ * Formulaire de création / édition d’un Post.
  */
 final class PostFormType extends AbstractType
 {
@@ -21,24 +21,24 @@ final class PostFormType extends AbstractType
     {
         $builder
             ->add('title', TextType::class, [
-                'label' => 'Titre du post',
+                'label' => 'Titre',
                 'constraints' => [
-                    new Assert\NotBlank(message: 'Le titre est obligatoire.'),
+                    new Assert\NotBlank(message: 'Le titre ne peut pas être vide.'),
                     new Assert\Length(
                         min: 5,
                         max: 255,
-                        minMessage: 'Le titre doit contenir au moins {{ limit }} caractères.',
+                        minMessage: 'Le titre doit faire au moins {{ limit }} caractères.',
                         maxMessage: 'Le titre ne peut pas dépasser {{ limit }} caractères.'
                     ),
                 ],
                 'attr' => [
-                    'placeholder' => 'Un titre bien ironique et percutant...',
-                    'autofocus'   => true,
+                    'placeholder' => 'Un titre bien ironique…',
                     'maxlength'   => 255,
+                    'autofocus'   => true,
                 ],
             ])
             ->add('content', TextareaType::class, [
-                'label' => 'Contenu',
+                'label' => 'Votre message',
                 'constraints' => [
                     new Assert\NotBlank(message: 'Le contenu ne peut pas être vide.'),
                     new Assert\Length(
@@ -50,7 +50,7 @@ final class PostFormType extends AbstractType
                 ],
                 'attr' => [
                     'rows'        => 12,
-                    'placeholder' => 'Racontez-nous cette anecdote d’ado qui vous a marqué...',
+                    'placeholder' => 'Racontez-nous votre dernier moment "ado" mémorable…',
                     'maxlength'   => 5000,
                 ],
             ])
