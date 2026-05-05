@@ -33,7 +33,7 @@ class PostRepository extends ServiceEntityRepository implements PostRepositoryIn
     }
 
     // ======================================================
-    // LISTES PUBLIQUES
+    // LISTES PUBLIQUES  (DQL)
     // ======================================================
 
     public function findLatestPosts(int $limit = 10): array
@@ -59,99 +59,105 @@ class PostRepository extends ServiceEntityRepository implements PostRepositoryIn
             ->orderBy('p.createdAt', 'DESC');
     }
 
-   public function findTrendingPosts(int $limit = 10): array
+    // ======================================================
+    // TRENDING & LEGEND (SQL natif → hydratation en entités)
+    // ======================================================
+
+        public function findTrendingPosts(int $limit = 10): array
     {
-        $limit = max(1, (int) $limit);
+        $limit = min(50, max(1, (int) $limit));   // ← Sécurisé anti-abus (nbre limité de résultats)
 
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = "
-            SELECT p.* 
+            SELECT p.id 
             FROM post p
             WHERE p.status = 'published' 
               AND p.deleted_at IS NULL
             ORDER BY 
                 (
-                    (
-                        SELECT COUNT(*) FROM vote v 
-                        WHERE v.post_id = p.id 
-                          AND v.type IN ('laugh', 'disillusioned')
-                    ) * 3 
-                    - (
-                        SELECT COUNT(*) FROM vote v 
-                        WHERE v.post_id = p.id 
-                          AND v.type = 'angry'
-                    ) * 1.5 
-                    + (
-                        SELECT COUNT(*) FROM vote v 
-                        WHERE v.post_id = p.id
-                    ) * 0.5
+                    (SELECT COUNT(*) FROM vote v 
+                     WHERE v.post_id = p.id AND v.type IN ('laugh','disillusioned')) * 3
+                    - (SELECT COUNT(*) FROM vote v 
+                       WHERE v.post_id = p.id AND v.type = 'angry') * 1.5
+                    + (SELECT COUNT(*) FROM vote v WHERE v.post_id = p.id) * 0.5
                 ) 
                 / POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 6, 1.2) DESC
-            LIMIT $limit
-        ";
+            LIMIT " . $limit;
 
-        $stmt = $conn->executeQuery($sql, ['limit' => $limit]);
-        $data = $stmt->fetchAllAssociative();
+        $ids = array_column(
+            $conn->executeQuery($sql)->fetchAllAssociative(),
+            'id'
+        );
 
-        // Hydratation en objets Post
-        $posts = [];
-        foreach ($data as $row) {
-            $post = $this->find($row['id']);
-            if ($post) {
-                $posts[] = $post;
-            }
+        if (empty($ids)) {
+            return [];
         }
 
-        return $posts;
+        $posts = $this->createQueryBuilder('p')
+            ->leftJoin('p.author', 'a')
+            ->addSelect('a')
+            ->where('p.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
+
+        // Conservation de l'ordre du classement SQL
+        $ordered = [];
+        $position = array_flip($ids);
+        foreach ($posts as $post) {
+            $ordered[$position[$post->getId()]] = $post;
+        }
+        ksort($ordered);
+
+        return array_values($ordered);
     }
 
-    /**
-     * Legend Posts : les posts qui restent excellents sur la durée.
-     *
-     * Algorithme :
-     * - Score basé principalement sur les votes positifs
-     * - Décroissance temporelle très lente (par jour)
-     */
-public function findLegendPosts(int $limit = 10): array
+    public function findLegendPosts(int $limit = 10): array
     {
-        $limit = max(1, (int) $limit);
+        $limit = min(70, max(1, (int) $limit));   // ← Sécurisé anti-abus (nbre limité résultats)
 
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = "
-            SELECT p.* 
+            SELECT p.id 
             FROM post p
             WHERE p.status = 'published' 
               AND p.deleted_at IS NULL
             ORDER BY 
                 (
-                    (
-                        SELECT COUNT(*) FROM vote v 
-                        WHERE v.post_id = p.id 
-                          AND v.type IN ('laugh', 'disillusioned')
-                    ) * 2.5 
-                    + (
-                        SELECT COUNT(*) FROM vote v 
-                        WHERE v.post_id = p.id
-                    ) * 0.3
+                    (SELECT COUNT(*) FROM vote v 
+                     WHERE v.post_id = p.id AND v.type IN ('laugh','disillusioned')) * 2.5
+                    + (SELECT COUNT(*) FROM vote v WHERE v.post_id = p.id) * 0.3
                 ) 
                 / POW(TIMESTAMPDIFF(DAY, p.created_at, NOW()) + 30, 0.8) DESC
-            LIMIT $limit
-        ";
+            LIMIT " . $limit;
 
-        $stmt = $conn->executeQuery($sql, ['limit' => $limit]);
-        $data = $stmt->fetchAllAssociative();
+        $ids = array_column(
+            $conn->executeQuery($sql)->fetchAllAssociative(),
+            'id'
+        );
 
-        $posts = [];
-        foreach ($data as $row) {
-            $post = $this->find($row['id']);
-            if ($post) {
-                $posts[] = $post;
-            }
+        if (empty($ids)) {
+            return [];
         }
 
-        return $posts;
+        $posts = $this->createQueryBuilder('p')
+            ->leftJoin('p.author', 'a')
+            ->addSelect('a')
+            ->where('p.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
+
+        $ordered = [];
+        $position = array_flip($ids);
+        foreach ($posts as $post) {
+            $ordered[$position[$post->getId()]] = $post;
+        }
+        ksort($ordered);
+
+        return array_values($ordered);
     }
 
     // ======================================================
