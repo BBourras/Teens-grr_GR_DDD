@@ -33,7 +33,7 @@ final readonly class VoteTypeFormatter
         return match ($voteType) {
             VoteType::LAUGH         => 'Trop drôle',
             VoteType::ANGRY         => 'Énervant',
-            VoteType::DISILLUSIONED => 'Tellement vrai…',
+            VoteType::DISILLUSIONED => 'Désabusé et moqueur',
         };
     }
 

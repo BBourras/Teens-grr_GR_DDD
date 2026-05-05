@@ -6,13 +6,15 @@ namespace App\Ui\Security\Voter;
 
 use App\Domain\Entity\Post;
 use App\Domain\Entity\User;
-use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 
 /**
  * Voter pour les droits sur les Posts.
+ *
+ * Attributs supportés : POST_VIEW, POST_EDIT, POST_DELETE
  */
 final class PostVoter extends Voter
 {
@@ -42,17 +44,17 @@ final class PostVoter extends Voter
         /** @var Post $post */
         $post = $subject;
 
-        // Utilisateur banni → refus immédiat
+        // 1. Utilisateur banni → refus immédiat
         if ($user instanceof User && $user->isBanned()) {
             return false;
         }
 
-        // Admin ou Modérateur → accès total
+        // 2. Admin ou Modérateur → accès total
         if ($this->security->isGranted('ROLE_ADMIN') || $this->security->isGranted('ROLE_MODERATOR')) {
             return true;
         }
 
-        // Règles métier
+        // 3. Règles métier
         return match ($attribute) {
             self::VIEW   => $this->canView($post, $user),
             self::EDIT   => $this->canEdit($post, $user),
