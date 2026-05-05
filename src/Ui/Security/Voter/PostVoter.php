@@ -6,23 +6,13 @@ namespace App\Ui\Security\Voter;
 
 use App\Domain\Entity\Post;
 use App\Domain\Entity\User;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
-use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 
 /**
  * Voter pour les droits sur les Posts.
- *
- * Attributs supportés :
- * - POST_VIEW
- * - POST_EDIT
- * - POST_DELETE
- *
- * Hiérarchie de décision :
- * 1. Utilisateur banni → refus immédiat
- * 2. Admin ou Modérateur → accès total
- * 3. Règles métier spécifiques (auteur + visibilité)
  */
 final class PostVoter extends Voter
 {
@@ -52,26 +42,32 @@ final class PostVoter extends Voter
         /** @var Post $post */
         $post = $subject;
 
-        // 1. Utilisateur banni → refus immédiat
+        // Utilisateur banni → refus immédiat
         if ($user instanceof User && $user->isBanned()) {
             return false;
         }
 
-        // 2. Admin ou Modérateur → accès total
-        if (
-            $this->security->isGranted('ROLE_ADMIN') ||
-            $this->security->isGranted('ROLE_MODERATOR')
-        ) {
+        // Admin ou Modérateur → accès total
+        if ($this->security->isGranted('ROLE_ADMIN') || $this->security->isGranted('ROLE_MODERATOR')) {
             return true;
         }
 
-        // 3. Règles métier selon l'attribut
+        // Règles métier
         return match ($attribute) {
-            self::VIEW   => $post->isVisible(),
+            self::VIEW   => $this->canView($post, $user),
             self::EDIT   => $this->canEdit($post, $user),
             self::DELETE => $this->canDelete($post, $user),
             default      => false,
         };
+    }
+
+    private function canView(Post $post, ?User $user): bool
+    {
+        if ($post->isVisible()) {
+            return true;
+        }
+
+        return $user instanceof User && $post->getAuthor() === $user;
     }
 
     private function canEdit(Post $post, ?User $user): bool
