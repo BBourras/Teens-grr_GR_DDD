@@ -23,7 +23,7 @@ class RegistrationController extends AbstractController
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly UserAuthenticatorInterface $userAuthenticator,
         private readonly FormLoginAuthenticator $formLoginAuthenticator,
-        private readonly RateLimiterFactory $limiterRegistration,   // ← Nom changé
+        private readonly RateLimiterFactory $registrationLimiter,   
     ) {}
 
     #[Route('/register', name: 'app_register', methods: ['GET', 'POST'])]
@@ -34,7 +34,7 @@ class RegistrationController extends AbstractController
         }
 
         // Rate limiting
-        $limiter = $this->limiterRegistration->create($request->getClientIp() ?? 'anonymous');
+        $limiter = $this->registrationLimiter->create($request->getClientIp() ?? 'anonymous');
         $limit = $limiter->consume(1);
 
         if (!$limit->isAccepted()) {

@@ -51,6 +51,5 @@ services:
         alias: limiter.vote_guest
     
     # Alias pour le rate limiter d'inscription
-    App\Ui\Controller\Security\RegistrationController:
-        arguments:
-            $limiterRegistration: '@limiter.registration'
+    Symfony\Component\RateLimiter\RateLimiterFactory $registrationLimiter:
+        alias: limiter.registration
