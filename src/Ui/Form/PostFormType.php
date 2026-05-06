@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Ui\Form;
 
-use App\Domain\Entity\Post;
+use App\Application\Dto\CreatePostDto;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -12,9 +12,6 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
 
-/**
- * Formulaire de création / édition d’un Post.
- */
 final class PostFormType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -24,16 +21,10 @@ final class PostFormType extends AbstractType
                 'label' => 'Titre',
                 'constraints' => [
                     new Assert\NotBlank(message: 'Le titre ne peut pas être vide.'),
-                    new Assert\Length(
-                        min: 5,
-                        max: 255,
-                        minMessage: 'Le titre doit faire au moins {{ limit }} caractères.',
-                        maxMessage: 'Le titre ne peut pas dépasser {{ limit }} caractères.'
-                    ),
+                    new Assert\Length(min: 5, max: 255),
                 ],
                 'attr' => [
                     'placeholder' => 'Un titre bien ironique…',
-                    'maxlength'   => 255,
                     'autofocus'   => true,
                 ],
             ])
@@ -41,17 +32,11 @@ final class PostFormType extends AbstractType
                 'label' => 'Votre message',
                 'constraints' => [
                     new Assert\NotBlank(message: 'Le contenu ne peut pas être vide.'),
-                    new Assert\Length(
-                        min: 10,
-                        max: 5000,
-                        minMessage: 'Le message doit faire au moins {{ limit }} caractères.',
-                        maxMessage: 'Le message ne peut pas dépasser {{ limit }} caractères.'
-                    ),
+                    new Assert\Length(min: 10, max: 5000),
                 ],
                 'attr' => [
                     'rows'        => 12,
                     'placeholder' => 'Racontez-nous votre dernier moment "ado" mémorable…',
-                    'maxlength'   => 5000,
                 ],
             ])
         ;
@@ -60,7 +45,7 @@ final class PostFormType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'data_class' => Post::class,
+            'data_class' => CreatePostDto::class,
         ]);
     }
 }

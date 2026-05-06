@@ -2,10 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Application\DTO;
+namespace App\Application\Dto;
 
-final class CreatePostDTO
+/**
+ * DTO pour la création d'un Post.
+ * Utilisé entre le Formulaire et le Service.
+ */
+final class CreatePostDto
 {
-    public ?string $title = null;
-    public ?string $content = null;
+    public function __construct(
+        public string $title = '',
+        public string $content = ''
+    ) {}
 }

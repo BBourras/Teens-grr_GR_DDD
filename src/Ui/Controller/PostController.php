@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Ui\Controller;
 
+use App\Application\Dto\CreatePostDto;
 use App\Domain\Entity\Post;
 use App\Domain\Enum\ReportReason;
 use App\Ui\Form\PostFormType;
@@ -16,6 +17,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+/**
+ * PostController – Gestion des Posts (affichage, CRUD).
+ *
+ * Ce controller reste fin et délègue toute la logique métier aux Services.
+ */
 #[Route('/posts')]
 class PostController extends AbstractController
 {
@@ -26,13 +32,12 @@ class PostController extends AbstractController
     ) {}
 
     // ======================================================
-    // LISTES
+    // LISTES PUBLIQUES
     // ======================================================
 
     #[Route('/recent', name: 'post_recent', methods: ['GET'])]
     public function recent(Request $request): Response
     {
-        // Pagination classique (retourne des entités Post)
         $pagination = $this->paginator->paginate(
             $this->postService->getLatestQueryBuilder(),
             $request->query->getInt('page', 1),
@@ -50,28 +55,29 @@ class PostController extends AbstractController
     #[Route('/top', name: 'post_trending', methods: ['GET'])]
     public function trending(Request $request): Response
     {
-        // SQL natif → retourne des arrays (pas des entités)
         $posts = $this->postService->getTrendingPosts(15);
 
         return $this->render('post/trending.html.twig', [
-            'posts' => $posts,
-            // On n'appelle PAS voteService ici (il attend des Post)
+            'posts'      => $posts,
+            'postScores' => $this->getPostScoresFromArrays($posts),   // Adaptation car SQL natif
+            'userVotes'  => $this->getUserVotes($posts, $request),
         ]);
     }
 
     #[Route('/legends', name: 'post_legend', methods: ['GET'])]
     public function legends(Request $request): Response
     {
-        //  SQL natif → arrays
         $posts = $this->postService->getLegendPosts(15);
 
         return $this->render('post/legends.html.twig', [
-            'posts' => $posts,
+            'posts'      => $posts,
+            'postScores' => $this->getPostScoresFromArrays($posts),
+            'userVotes'  => $this->getUserVotes($posts, $request),
         ]);
     }
 
     // ======================================================
-    // SHOW
+    // AFFICHAGE D'UN POST
     // ======================================================
 
     #[Route('/{id<\d+>}', name: 'post_show', methods: ['GET'])]
@@ -82,7 +88,7 @@ class PostController extends AbstractController
             'comments'     => $post->getComments(),
             'postScores'   => $this->voteService->getVoteScoreByType($post),
             'userVote'     => $this->getCurrentUserVote($post, $request),
-            'reportReasons'=> ReportReason::cases(),
+            'reportReasons' => ReportReason::cases(),
         ]);
     }
 
@@ -94,23 +100,14 @@ class PostController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function new(Request $request): Response
     {
-        $user = $this->getUser();
-        if (!$user) {
-            throw $this->createAccessDeniedException();
-        }
-
         $form = $this->createForm(PostFormType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var Post $data */
-            $data = $form->getData();
+            /** @var CreatePostDto $dto */
+            $dto = $form->getData();
 
-            $post = $this->postService->createPost(
-                $data->getTitle(),
-                $data->getContent(),
-                $user
-            );
+            $post = $this->postService->createPost($dto, $this->getUser());
 
             $this->addFlash('success', 'Post publié avec succès !');
 
@@ -133,8 +130,6 @@ class PostController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-
-            // ✔ correction : on passe les valeurs attendues
             $this->postService->update(
                 $post,
                 $post->getTitle(),
@@ -159,7 +154,7 @@ class PostController extends AbstractController
     {
         $this->denyAccessUnlessGranted('POST_DELETE', $post);
 
-        if (!$this->isCsrfTokenValid('delete'.$post->getId(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('delete' . $post->getId(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Token invalide.');
             return $this->redirectToRoute('post_show', ['id' => $post->getId()]);
         }
@@ -176,16 +171,33 @@ class PostController extends AbstractController
     // ======================================================
 
     /**
-     * Utilisé uniquement avec des entités Post (pas SQL natif)
+     * Calcule les scores pour un tableau d'entités Post.
      */
     private function getPostScoresFromEntities(iterable $posts): array
     {
         $scores = [];
-
         foreach ($posts as $post) {
             $scores[$post->getId()] = $this->voteService->getVoteScoreByType($post);
         }
+        return $scores;
+    }
 
+    /**
+     * Calcule les scores pour un tableau issu de SQL natif (Trending / Legend).
+     * Attention : les posts sont des arrays ici.
+     */
+    private function getPostScoresFromArrays(iterable $posts): array
+    {
+        $scores = [];
+        foreach ($posts as $post) {
+            // Si c'est un array issu de SQL natif, on recharge l'entité
+            if (is_array($post) && isset($post['id'])) {
+                $entity = $this->postService->findPostById($post['id']); // À créer si nécessaire
+                if ($entity) {
+                    $scores[$post['id']] = $this->voteService->getVoteScoreByType($entity);
+                }
+            }
+        }
         return $scores;
     }
 
@@ -199,12 +211,34 @@ class PostController extends AbstractController
         }
 
         $guestKey = $request->cookies->get('guest_vote_key');
-
         if ($guestKey) {
             $vote = $this->voteService->getGuestVoteOnPost($post, $guestKey);
             return $vote?->getType()?->value;
         }
 
         return null;
+    }
+
+    private function getUserVotes(array $posts, Request $request): array
+    {
+        $votes = [];
+        $user = $this->getUser();
+        $guestKey = $request->cookies->get('guest_vote_key');
+
+        foreach ($posts as $post) {
+            $id = is_array($post) ? $post['id'] : $post->getId();
+
+            if ($user) {
+                $vote = $this->voteService->getUserVoteOnPost($post, $user);
+            } elseif ($guestKey) {
+                $vote = $this->voteService->getGuestVoteOnPost($post, $guestKey);
+            } else {
+                $vote = null;
+            }
+
+            $votes[$id] = $vote?->getType()?->value;
+        }
+
+        return $votes;
     }
 }

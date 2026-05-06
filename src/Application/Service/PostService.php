@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Service;
 
+use App\Application\Dto\CreatePostDto;
 use App\Domain\Contract\ModerationServiceInterface;
 use App\Domain\Contract\PostRepositoryInterface;
 use App\Domain\Entity\Post;
@@ -20,7 +21,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  * Responsabilités :
  * - Création et mise à jour des posts
  * - Délégation complète de la modération à ModerationService
- * - Fourniture des QueryBuilders et listes pour les controllers
+ * - Fourniture des données de lecture aux controllers
  */
 final class PostService
 {
@@ -31,9 +32,13 @@ final class PostService
         private readonly EventDispatcherInterface $eventDispatcher,
     ) {}
 
-    public function createPost(string $title, string $content, User $author): Post
+    // ======================================================
+    // COMMANDES (Write)
+    // ======================================================
+
+    public function createPost(CreatePostDto $dto, User $author): Post
     {
-        $post = new Post($author, $title, $content);
+        $post = new Post($author, $dto->title, $dto->content);
 
         $this->em->persist($post);
         $this->em->flush();
@@ -68,7 +73,7 @@ final class PostService
     }
 
     // ======================================================
-    // LECTURE  (délègue au Repository)
+    // QUERIES (Read)
     // ======================================================
 
     public function getLatestQueryBuilder(): QueryBuilder
@@ -94,5 +99,15 @@ final class PostService
     public function getVisiblePostsByAuthor(User $author, int $limit = 10): array
     {
         return $this->postRepository->findVisibleByAuthor($author, $limit);
+    }
+
+    /**
+     * Récupère un Post par son ID.
+     * Utilisé principalement pour recharger une entité après une requête SQL native.
+     */
+    public function findPostById(int $id): ?Post
+    {
+        // Utilisation directe de l'EntityManager pour éviter d'ajouter find() dans l'interface
+        return $this->em->getRepository(Post::class)->find($id);
     }
 }
