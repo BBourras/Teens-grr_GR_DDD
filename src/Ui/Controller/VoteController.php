@@ -27,7 +27,14 @@ class VoteController extends AbstractController
     #[Route('', name: 'vote_post', methods: ['POST'])]
     public function vote(Post $post, Request $request): Response
     {
-        $type = VoteType::tryFrom($request->request->get('type'));
+        $typeString = $request->request->get('type');
+
+        if (empty($typeString)) {
+            $this->addFlash('error', 'Type de réaction manquant.');
+            return $this->redirectToRoute('post_show', ['id' => $post->getId()]);
+        }
+
+        $type = VoteType::tryFrom($typeString);
 
         if ($type === null) {
             $this->addFlash('error', 'Type de réaction invalide.');
@@ -36,33 +43,37 @@ class VoteController extends AbstractController
 
         $user = $this->getUser();
 
-        if ($user) {
-            $this->voteService->voteAsUser($post, $user, $type);
-            $this->addFlash('success', 'Vote enregistré !');
-        } else {
-            $guestKey = $request->cookies->get(self::GUEST_COOKIE_NAME) ?? Uuid::v4()->toRfc4122();
+        try {
+            if ($user) {
+                $this->voteService->voteAsUser($post, $user, $type);
+            } else {
+                $guestKey = $request->cookies->get(self::GUEST_COOKIE_NAME) 
+                    ?? Uuid::v4()->toRfc4122();
 
-            try {
-                $this->voteService->voteAsGuest($post, $guestKey, $request->getClientIp() ?? '', $type);
-                $this->addFlash('success', 'Vote enregistré !');
-            } catch (\Throwable $e) {
-                $this->addFlash('error', $e->getMessage());
+                $this->voteService->voteAsGuest(
+                    $post, 
+                    $guestKey, 
+                    $request->getClientIp() ?? 'unknown', 
+                    $type
+                );
+
+                // Mise à jour du cookie invité
+                $response = $this->redirectToRoute('post_show', ['id' => $post->getId()]);
+                $response->headers->setCookie(
+                    Cookie::create(self::GUEST_COOKIE_NAME)
+                        ->withValue($guestKey)
+                        ->withExpires(time() + self::COOKIE_TTL)
+                        ->withHttpOnly(true)
+                        ->withSameSite(Cookie::SAMESITE_LAX)
+                );
+                return $response;
             }
+
+            $this->addFlash('success', 'Réaction enregistrée !');
+        } catch (\Throwable $e) {
+            $this->addFlash('error', $e->getMessage());
         }
 
-        $response = $this->redirectToRoute('post_show', ['id' => $post->getId()]);
-
-        // Mise à jour du cookie invité
-        if (!$user) {
-            $response->headers->setCookie(
-                Cookie::create(self::GUEST_COOKIE_NAME)
-                    ->withValue($guestKey)
-                    ->withExpires(time() + self::COOKIE_TTL)
-                    ->withHttpOnly(true)
-                    ->withSameSite(Cookie::SAMESITE_LAX)
-            );
-        }
-
-        return $response;
+        return $this->redirectToRoute('post_show', ['id' => $post->getId()]);
     }
 }

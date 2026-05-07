@@ -7,6 +7,7 @@ namespace App\Ui\Controller;
 use App\Application\Dto\CreatePostDto;
 use App\Domain\Entity\Post;
 use App\Domain\Enum\ReportReason;
+use App\Domain\Enum\VoteType;                    // ← Import ajouté
 use App\Ui\Form\PostFormType;
 use App\Application\Service\PostService;
 use App\Application\Service\VoteService;
@@ -59,7 +60,7 @@ class PostController extends AbstractController
 
         return $this->render('post/trending.html.twig', [
             'posts'      => $posts,
-            'postScores' => $this->getPostScoresFromArrays($posts),   // Adaptation car SQL natif
+            'postScores' => $this->getPostScoresFromArrays($posts),
             'userVotes'  => $this->getUserVotes($posts, $request),
         ]);
     }
@@ -84,10 +85,10 @@ class PostController extends AbstractController
     public function show(Post $post, Request $request): Response
     {
         return $this->render('post/show.html.twig', [
-            'post'         => $post,
-            'comments'     => $post->getComments(),
-            'postScores'   => $this->voteService->getVoteScoreByType($post),
-            'userVote'     => $this->getCurrentUserVote($post, $request),
+            'post'          => $post,
+            'comments'      => $post->getComments(),
+            'postScores'    => $this->voteService->getVoteScoreByType($post),
+            'userVote'      => $this->getCurrentUserVote($post, $request),
             'reportReasons' => ReportReason::cases(),
         ]);
     }
@@ -170,34 +171,42 @@ class PostController extends AbstractController
     // HELPERS
     // ======================================================
 
-    /**
-     * Calcule les scores pour un tableau d'entités Post.
-     */
     private function getPostScoresFromEntities(iterable $posts): array
     {
         $scores = [];
+
         foreach ($posts as $post) {
-            $scores[$post->getId()] = $this->voteService->getVoteScoreByType($post);
+            $rawScores = $this->voteService->getVoteScoreByType($post);
+            $scores[$post->getId()] = [];
+
+            foreach ($rawScores as $voteType => $count) {
+                $key = $voteType instanceof VoteType ? $voteType->value : (string) $voteType;
+                $scores[$post->getId()][$key] = $count;
+            }
         }
+
         return $scores;
     }
 
-    /**
-     * Calcule les scores pour un tableau issu de SQL natif (Trending / Legend).
-     * Attention : les posts sont des arrays ici.
-     */
     private function getPostScoresFromArrays(iterable $posts): array
     {
         $scores = [];
-        foreach ($posts as $post) {
-            // Si c'est un array issu de SQL natif, on recharge l'entité
-            if (is_array($post) && isset($post['id'])) {
-                $entity = $this->postService->findPostById($post['id']); // À créer si nécessaire
-                if ($entity) {
-                    $scores[$post['id']] = $this->voteService->getVoteScoreByType($entity);
+
+        foreach ($posts as $postData) {
+            $id = is_array($postData) ? $postData['id'] : $postData->getId();
+
+            $entity = $this->postService->findPostById($id);
+            if ($entity) {
+                $rawScores = $this->voteService->getVoteScoreByType($entity);
+                $scores[$id] = [];
+
+                foreach ($rawScores as $voteType => $count) {
+                    $key = $voteType instanceof VoteType ? $voteType->value : (string) $voteType;
+                    $scores[$id][$key] = $count;
                 }
             }
         }
+
         return $scores;
     }
 

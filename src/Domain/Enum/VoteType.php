@@ -23,7 +23,7 @@ enum VoteType: string
      * DISILLUSIONED → +2 (fort engagement ironique)
      * ANGRY         → -1 (négatif)
      *
-     * ⚠️ Si ces valeurs changent, pensez à recalculer les scores existants.
+     *  Si ces valeurs changent, penser à recalculer les scores existants.
      */
     public function scoreImpact(): int
     {

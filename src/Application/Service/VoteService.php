@@ -21,7 +21,7 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
  * Responsabilités :
  * - Règles métier (1 vote max par user/post, rate limit invités)
  * - Création / mise à jour / suppression des votes
- * - Dispatch d'événements uniquement
+ * - Dispatch d'événements
  */
 final class VoteService
 {
@@ -108,7 +108,7 @@ final class VoteService
     private function updateVote(Vote $vote, VoteType $newType): void
     {
         $oldType = $vote->getType();
-        $vote->setType($newType);
+        $vote->changeType($newType);           // ← Correction ici
 
         $this->dispatcher->dispatch(
             new VoteEvent(VoteEvent::UPDATED, $vote->getPost(), $vote, $oldType, $newType)
@@ -141,7 +141,7 @@ final class VoteService
     }
 
     // ======================================================
-    // MÉTHODES DE LECTURE POUR LES CONTROLLERS
+    // MÉTHODES DE LECTURE
     // ======================================================
 
     public function getUserVoteOnPost(Post $post, User $user): ?Vote

@@ -15,8 +15,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Règles métier importantes :
  * - 1 vote maximum par utilisateur connecté et par post
  * - 1 vote maximum par invité (via guestKey) et par post
- * - Un vote peut être modifié (changement d'emoji)
- * - Contrainte XOR stricte : soit user, soit guestKey (jamais les deux, jamais aucun)
+ * - Contrainte XOR stricte : soit user, soit guestKey
  */
 #[ORM\Entity(repositoryClass: VoteRepository::class)]
 #[ORM\HasLifecycleCallbacks]
@@ -25,13 +24,6 @@ use Doctrine\ORM\Mapping as ORM;
     uniqueConstraints: [
         new ORM\UniqueConstraint(name: 'uniq_vote_user_post', columns: ['user_id', 'post_id']),
         new ORM\UniqueConstraint(name: 'uniq_vote_guest_post', columns: ['guest_key', 'post_id']),
-    ],
-    indexes: [
-        new ORM\Index(name: 'idx_vote_post',              columns: ['post_id']),
-        new ORM\Index(name: 'idx_vote_post_type',         columns: ['post_id', 'type']),
-        new ORM\Index(name: 'idx_vote_created_at',        columns: ['created_at']),
-        new ORM\Index(name: 'idx_vote_guest_key',         columns: ['guest_key']),
-        new ORM\Index(name: 'idx_vote_guest_post_created', columns: ['guest_key', 'post_id', 'created_at']),
     ]
 )]
 class Vote
@@ -45,16 +37,10 @@ class Vote
     // RELATIONS
     // ======================================================
 
-    /**
-     * Utilisateur connecté (null pour les votes invités).
-     */
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'votes', fetch: 'EXTRA_LAZY')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?User $user = null;
 
-    /**
-     * Post concerné par ce vote.
-     */
     #[ORM\ManyToOne(targetEntity: Post::class, inversedBy: 'votes', fetch: 'EXTRA_LAZY')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Post $post;
@@ -63,22 +49,12 @@ class Vote
     // DONNÉES MÉTIER
     // ======================================================
 
-    /**
-     * Type de réaction choisie.
-     */
     #[ORM\Column(enumType: VoteType::class)]
     private VoteType $type;
 
-    /**
-     * Identifiant invité (UUID généralement stocké en cookie).
-     * Obligatoire pour les votes non connectés.
-     */
     #[ORM\Column(name: 'guest_key', length: 64, nullable: true)]
     private ?string $guestKey = null;
 
-    /**
-     * Hash anonymisé de l'IP (SHA-256) pour limitation anti-abus.
-     */
     #[ORM\Column(name: 'guest_ip_hash', length: 64, nullable: true)]
     private ?string $guestIpHash = null;
 
@@ -93,13 +69,23 @@ class Vote
     private ?\DateTimeImmutable $updatedAt = null;
 
     // ======================================================
+    // CONSTRUCTEUR
+    // ======================================================
+
+    public function __construct(Post $post, VoteType $type)
+    {
+        $this->post = $post;
+        $this->type = $type;           // ← Important : on force le type ici
+        $this->createdAt = new \DateTimeImmutable();
+    }
+
+    // ======================================================
     // LIFECYCLE
     // ======================================================
 
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
-        $this->createdAt ??= new \DateTimeImmutable();
         $this->assertValidVoter();
     }
 
@@ -110,23 +96,16 @@ class Vote
     }
 
     // ======================================================
-    // VALIDATION MÉTIER
+    // VALIDATION
     // ======================================================
 
-    /**
-     * Garantit la règle XOR : soit un utilisateur connecté, soit un invité.
-     *
-     * @throws \LogicException
-     */
     public function assertValidVoter(): void
     {
         $hasUser = $this->user !== null;
         $hasGuest = $this->guestKey !== null && $this->guestKey !== '';
 
         if ($hasUser === $hasGuest) {
-            throw new \LogicException(
-                'Un vote doit avoir soit un utilisateur connecté, soit une clé invité — pas les deux, pas aucun.'
-            );
+            throw new \LogicException('Un vote doit avoir soit un utilisateur, soit une clé invité.');
         }
     }
 
@@ -136,22 +115,16 @@ class Vote
 
     public function assignUser(User $user): static
     {
-        $this->setUser($user);
+        $this->user = $user;
         return $this;
     }
 
     public function assignGuest(string $guestKey, ?string $guestIpHash = null): static
     {
-        $this->setGuestKey($guestKey);
+        $this->guestKey = $guestKey;
         if ($guestIpHash !== null) {
-            $this->setGuestIpHash($guestIpHash);
+            $this->guestIpHash = $guestIpHash;
         }
-        return $this;
-    }
-
-    public function assignPost(Post $post): static
-    {
-        $this->setPost($post);
         return $this;
     }
 
@@ -162,40 +135,15 @@ class Vote
     }
 
     // ======================================================
-    // HELPERS
-    // ======================================================
-
-    public function isUserVote(): bool
-    {
-        return $this->user !== null;
-    }
-
-    public function isGuestVote(): bool
-    {
-        return $this->user === null;
-    }
-
-    // ======================================================
-    // GETTERS & SETTERS PROTÉGÉS
+    // GETTERS
     // ======================================================
 
     public function getId(): ?int { return $this->id; }
-
-    public function getUser(): ?User { return $this->user; }
-    protected function setUser(?User $user): static { $this->user = $user; return $this; }
-
     public function getPost(): Post { return $this->post; }
-    protected function setPost(Post $post): static { $this->post = $post; return $this; }
-
     public function getType(): VoteType { return $this->type; }
-    public function setType(VoteType $type): static { $this->type = $type; return $this; }
-
+    public function getUser(): ?User { return $this->user; }
     public function getGuestKey(): ?string { return $this->guestKey; }
-    protected function setGuestKey(?string $guestKey): static { $this->guestKey = $guestKey; return $this; }
-
     public function getGuestIpHash(): ?string { return $this->guestIpHash; }
-    protected function setGuestIpHash(?string $guestIpHash): static { $this->guestIpHash = $guestIpHash; return $this; }
-
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
 }

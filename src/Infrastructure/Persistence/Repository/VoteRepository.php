@@ -8,12 +8,13 @@ use App\Domain\Contract\VoteRepositoryInterface;
 use App\Domain\Entity\Post;
 use App\Domain\Entity\User;
 use App\Domain\Entity\Vote;
+use App\Domain\Enum\VoteType;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * ======================================================
- * 📦 VoteRepository
+ *  VoteRepository
  * ======================================================
  *
  * Implémente VoteRepositoryInterface (contrat domaine)
@@ -24,7 +25,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * - Recherche user / guest
  * - Statistiques par post
  *
- * ⚠️ Aucune logique métier ici
+ *  Aucune logique métier ici
  */
 class VoteRepository extends ServiceEntityRepository implements VoteRepositoryInterface
 {
@@ -34,7 +35,7 @@ class VoteRepository extends ServiceEntityRepository implements VoteRepositoryIn
     }
 
     // ======================================================
-    // 🔍 LOOKUPS (EXISTING VOTES)
+    // EXISTING VOTES
     // ======================================================
 
     public function findOneByUserAndPost(User $user, Post $post): ?Vote
@@ -54,7 +55,7 @@ class VoteRepository extends ServiceEntityRepository implements VoteRepositoryIn
     }
 
     // ======================================================
-    // 📊 BASIC STATS
+    // BASIC STATS
     // ======================================================
 
     public function countByPost(Post $post): int
@@ -79,15 +80,17 @@ class VoteRepository extends ServiceEntityRepository implements VoteRepositoryIn
     }
 
     // ======================================================
-    // 📊 VOTES GROUPÉS PAR TYPE
+    // VOTES GROUPÉS PAR TYPE
     // ======================================================
 
-    /**
-     * Retourne :
+      /**
+     * Retourne les scores groupés par type de vote (utilisé dans Twig).
+     *
+     * Retourne toujours un tableau avec des clés string :
      * [
-     *   'LAUGH' => 12,
-     *   'ANGRY' => 3,
-     *   ...
+     *   'laugh'         => 12,
+     *   'angry'         => 3,
+     *   'disillusioned' => 8,
      * ]
      */
     public function findScoreByTypeForPost(Post $post): array
@@ -103,14 +106,20 @@ class VoteRepository extends ServiceEntityRepository implements VoteRepositoryIn
         $result = [];
 
         foreach ($rows as $row) {
-            $result[$row['type']] = (int) $row['count'];
+            // Gestion sécurisée du type (enum ou string)
+            $typeKey = $row['type'] instanceof VoteType 
+                ? $row['type']->value 
+                : (string) $row['type'];
+
+            $result[$typeKey] = (int) $row['count'];
         }
 
         return $result;
     }
 
+
     // ======================================================
-    // 🚫 ANTI-SPAM (GUEST IP)
+    // ANTI-SPAM (GUEST IP)
     // ======================================================
 
     /**
