@@ -11,22 +11,14 @@ use App\Domain\Enum\ModerationActionType;
 use App\Domain\ValueObject\Target;
 
 /**
- * Factory pour créer des logs de modération.
+ * ModerationActionLogFactory – Crée les logs d'audit de modération.
  *
- * Responsable de l'instanciation propre des ModerationActionLog
- * avec toutes les données nécessaires pour l'audit.
+ * Centralise la création des logs pour garantir cohérence et traçabilité.
  */
 final readonly class ModerationActionLogFactory
 {
     /**
-     * Crée un log de modération à partir d'un Target.
-     *
-     * @param Target           $target      Le contenu ciblé (Post ou Comment via ValueObject)
-     * @param ModerationActionType $actionType Type d'action effectuée
-     * @param ContentStatus    $oldStatus   Statut avant l'action
-     * @param ContentStatus    $newStatus   Statut après l'action
-     * @param User|null        $moderator   Modérateur (null = action automatique)
-     * @param string|null      $reason      Raison / commentaire optionnel
+     * Crée un log complet d'action de modération.
      */
     public function create(
         Target $target,
@@ -39,16 +31,18 @@ final readonly class ModerationActionLogFactory
         $log = new ModerationActionLog();
 
         $log->setActionType($actionType);
-        $log->setPreviousStatus($oldStatus);
-        $log->setNewStatus($newStatus);
+        $log->setPreviousStatus($oldStatus);     // Passage de l'enum complet
+        $log->setNewStatus($newStatus);          // Passage de l'enum complet
         $log->setReason($reason);
         $log->setModerator($moderator);
 
         // Assignation du target (Post OU Comment)
         if ($target->isPost()) {
             $log->assignPost($target->getPost());
-        } else {
+        } elseif ($target->isComment()) {
             $log->assignComment($target->getComment());
+        } else {
+            throw new \LogicException('Type de Target non supporté dans ModerationActionLogFactory');
         }
 
         return $log;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Ui\Controller;
 
+use App\Domain\Contract\ModeratableContentInterface;
 use App\Domain\Entity\Comment;
 use App\Domain\Entity\Post;
 use App\Ui\Form\ReportFormType;
@@ -14,6 +15,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+/**
+ * ReportController – Gestion des signalements par les utilisateurs.
+ */
 #[Route('/reports')]
 class ReportController extends AbstractController
 {
@@ -35,8 +39,15 @@ class ReportController extends AbstractController
         return $this->handleReport($comment, $request);
     }
 
-    private function handleReport($content, Request $request): Response
-    {
+    /**
+     * Logique commune de signalement (Post ou Comment).
+     *
+     * @param Post|Comment $content
+     */
+    private function handleReport(
+        ModeratableContentInterface $content,
+        Request $request
+    ): Response {
         $form = $this->createForm(ReportFormType::class);
         $form->handleRequest($request);
 
@@ -45,17 +56,27 @@ class ReportController extends AbstractController
 
             try {
                 if ($content instanceof Post) {
-                    $this->reportService->reportPost($content, $this->getUser(), $data['reason'], $data['reason_detail'] ?? null);
+                    $this->reportService->reportPost(
+                        $content,
+                        $this->getUser(),
+                        $data['reason'],
+                        $data['reason_detail'] ?? null
+                    );
                 } else {
-                    $this->reportService->reportComment($content, $this->getUser(), $data['reason'], $data['reason_detail'] ?? null);
+                    $this->reportService->reportComment(
+                        $content,
+                        $this->getUser(),
+                        $data['reason'],
+                        $data['reason_detail'] ?? null
+                    );
                 }
 
-                $this->addFlash('success', 'Signalement enregistré. Merci !');
+                $this->addFlash('success', 'Signalement enregistré. Merci pour votre vigilance !');
             } catch (\Exception $e) {
-                $this->addFlash('error', 'Erreur lors du signalement.');
+                $this->addFlash('error', 'Une erreur est survenue lors du signalement.');
             }
 
-            return $this->redirectToPost($content);
+            return $this->redirectToContent($content);
         }
 
         return $this->render('reports/report_form.html.twig', [
@@ -65,9 +86,12 @@ class ReportController extends AbstractController
         ]);
     }
 
-    private function redirectToPost($content): Response
+    private function redirectToContent(ModeratableContentInterface $content): Response
     {
-        $postId = $content instanceof Post ? $content->getId() : $content->getPost()->getId();
+        $postId = $content instanceof Post 
+            ? $content->getId() 
+            : $content->getPost()->getId();
+
         return $this->redirectToRoute('post_show', ['id' => $postId]);
     }
 }

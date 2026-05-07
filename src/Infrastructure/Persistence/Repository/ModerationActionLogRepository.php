@@ -9,19 +9,18 @@ use App\Domain\Entity\ModerationActionLog;
 use App\Domain\Entity\Post;
 use App\Domain\Entity\User;
 use App\Domain\Enum\ModerationActionType;
+use App\Domain\Contract\ModeratableContentInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repository du journal de modération.
+ * ModerationActionLogRepository – Journal d'audit des actions de modération.
  *
- * Fournit les requêtes nécessaires à :
- * - L'historique d'un post ou commentaire spécifique
- * - Le journal d'activité d'un modérateur
- * - Le flux global d'actions (dashboard admin)
- * - La distinction actions automatiques / manuelles
- *
- * Les logs sont immuables : aucune méthode d'écriture ici.
+ * Ce repository est **immuable** (lecture seule).
+ * Il fournit l'historique complet pour :
+ * - Traçabilité en cas de litige
+ * - Dashboard administrateur / modérateur
+ * - Statistiques d'activité
  */
 class ModerationActionLogRepository extends ServiceEntityRepository
 {
@@ -31,40 +30,73 @@ class ModerationActionLogRepository extends ServiceEntityRepository
     }
 
     // ======================================================
-    // HISTORIQUE PAR ENTITÉ
+    // HISTORIQUE PAR CONTENU (Post ou Comment)
     // ======================================================
 
-    public function findModActByPost(Post $post): array
+    /**
+     * Historique complet des actions sur un Post.
+     */
+    public function findByPost(Post $post): array
     {
         return $this->createQueryBuilder('l')
             ->leftJoin('l.moderator', 'm')
             ->addSelect('m')
             ->where('l.post = :post')
-            ->setParameter('post', $post)
             ->orderBy('l.createdAt', 'DESC')
+            ->setParameter('post', $post)
             ->getQuery()
             ->getResult();
     }
 
-    public function findModActByComment(Comment $comment): array
+    /**
+     * Historique complet des actions sur un Commentaire.
+     */
+    public function findByComment(Comment $comment): array
     {
         return $this->createQueryBuilder('l')
             ->leftJoin('l.moderator', 'm')
             ->addSelect('m')
             ->where('l.comment = :comment')
-            ->setParameter('comment', $comment)
             ->orderBy('l.createdAt', 'DESC')
+            ->setParameter('comment', $comment)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Historique générique (Post ou Comment) via l'interface.
+     */
+    public function findByContent(ModeratableContentInterface $content): array
+    {
+        $qb = $this->createQueryBuilder('l')
+            ->leftJoin('l.moderator', 'm')
+            ->addSelect('m');
+
+        if ($content instanceof Post) {
+            $qb->where('l.post = :content');
+        } else {
+            $qb->where('l.comment = :content');
+        }
+
+        return $qb->orderBy('l.createdAt', 'DESC')
+            ->setParameter('content', $content)
             ->getQuery()
             ->getResult();
     }
 
     // ======================================================
-    // JOURNAL D'ACTIVITÉ MODÉRATEUR
+    // ACTIVITÉ DES MODÉRATEURS
     // ======================================================
 
-    public function findModActByModerator(User $moderator, int $limit = 50): array
+    /**
+     * Actions effectuées par un modérateur spécifique.
+     */
+    public function findByModerator(User $moderator, int $limit = 50): array
     {
         return $this->createQueryBuilder('l')
+            ->leftJoin('l.post', 'p')
+            ->leftJoin('l.comment', 'c')
+            ->addSelect('p', 'c')
             ->where('l.moderator = :moderator')
             ->setParameter('moderator', $moderator)
             ->orderBy('l.createdAt', 'DESC')
@@ -74,40 +106,45 @@ class ModerationActionLogRepository extends ServiceEntityRepository
     }
 
     // ======================================================
-    // FLUX GLOBAL (dashboard admin)
+    // FLUX GLOBAL & STATISTIQUES
     // ======================================================
 
+    /**
+     * Dernières actions de modération (flux général).
+     */
     public function findRecent(int $limit = 100): array
     {
         return $this->createQueryBuilder('l')
             ->leftJoin('l.moderator', 'm')
-            ->addSelect('m')
+            ->leftJoin('l.post', 'p')
+            ->leftJoin('l.comment', 'c')
+            ->addSelect('m', 'p', 'c')
             ->orderBy('l.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
     }
 
-    public function findAutomatic(int $limit = 50): array
+    /**
+     * Actions automatiques uniquement (masquage auto).
+     */
+    public function findAutomaticActions(int $limit = 50): array
     {
         return $this->createQueryBuilder('l')
             ->where('l.moderator IS NULL')
-            ->andWhere('l.actionType = :type')
-            ->setParameter('type', ModerationActionType::AUTO_HIDE)
             ->orderBy('l.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
     }
 
-    // ======================================================
-    // FILTRAGE PAR TYPE ET PÉRIODE
-    // ======================================================
-
+    /**
+     * Actions par type et période (utile pour statistiques).
+     */
     public function findByTypeAndPeriod(
         ModerationActionType $type,
         \DateTimeImmutable $from,
-        \DateTimeImmutable $to,
+        \DateTimeImmutable $to
     ): array {
         return $this->createQueryBuilder('l')
             ->leftJoin('l.moderator', 'm')
@@ -126,7 +163,7 @@ class ModerationActionLogRepository extends ServiceEntityRepository
     public function countByTypeAndPeriod(
         ModerationActionType $type,
         \DateTimeImmutable $from,
-        \DateTimeImmutable $to,
+        \DateTimeImmutable $to
     ): int {
         return (int) $this->createQueryBuilder('l')
             ->select('COUNT(l.id)')
@@ -138,20 +175,5 @@ class ModerationActionLogRepository extends ServiceEntityRepository
             ->setParameter('to', $to)
             ->getQuery()
             ->getSingleScalarResult();
-    }
-
-    public function findModActByUser(User $user, int $limit = 50): array
-    {
-        return $this->createQueryBuilder('l')
-            ->leftJoin('l.moderator', 'm')
-            ->addSelect('m')
-            ->leftJoin('l.post', 'p')
-            ->leftJoin('l.comment', 'c')
-            ->where('p.author = :user OR c.author = :user')
-            ->setParameter('user', $user)
-            ->orderBy('l.createdAt', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
     }
 }

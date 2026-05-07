@@ -82,7 +82,7 @@ final class ModerationService implements ModerationServiceInterface
     }
 
     // ======================================================
-    // TRANSITION CENTRALE
+    // TRANSITION CENTRALE (cœur du service)
     // ======================================================
 
     private function transition(
@@ -112,9 +112,9 @@ final class ModerationService implements ModerationServiceInterface
                 $content->setDeletedAt(null);
             }
 
-            // Création du log avec Target
+            // Création du log d'audit
             $log = $this->logFactory->create(
-                Target::fromContent($content),   // ← Correction ici
+                Target::fromContent($content),
                 $actionType,
                 $oldStatus,
                 $newStatus,

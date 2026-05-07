@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Ui\Controller;
 
+use App\Domain\Contract\ModeratableContentInterface;
 use App\Domain\Entity\Comment;
 use App\Domain\Entity\Post;
+use App\Domain\Entity\User;
 use App\Application\Service\CommentService;
 use App\Application\Service\ModerationService;
 use App\Application\Service\PostService;
@@ -15,6 +17,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+/**
+ * ModerationController – Dashboard et actions manuelles de modération.
+ *
+ * Centralise toutes les actions de modération (masquage, suppression, restauration)
+ * pour les Posts et Commentaires.
+ */
 #[Route('/moderation')]
 class ModerationController extends AbstractController
 {
@@ -29,17 +37,20 @@ class ModerationController extends AbstractController
     public function dashboard(): Response
     {
         return $this->render('moderation/dashboard.html.twig', [
-            'posts'    => $this->postService->getAutoHiddenPendingPosts(),
-            'comments' => $this->commentService->getAutoHiddenPendingComments(),
+            'pendingPosts'    => $this->postService->getAutoHiddenPendingPosts(),
+            'pendingComments' => $this->commentService->getAutoHiddenPendingComments(),
         ]);
     }
 
-    // Actions Posts
+    // ======================================================
+    // ACTIONS SUR POSTS
+    // ======================================================
+
     #[Route('/post/{id}/hide', name: 'moderation_post_hide', methods: ['POST'])]
     #[IsGranted('ROLE_MODERATOR')]
     public function hidePost(Post $post, Request $request): Response
     {
-        $this->processAction($post, 'hideByModerator', $request);
+        $this->executeModerationAction($post, 'hideByModerator', $request, 'Post masqué avec succès.');
         return $this->redirectToRoute('moderation_dashboard');
     }
 
@@ -47,7 +58,7 @@ class ModerationController extends AbstractController
     #[IsGranted('ROLE_MODERATOR')]
     public function restorePost(Post $post, Request $request): Response
     {
-        $this->processAction($post, 'restore', $request);
+        $this->executeModerationAction($post, 'restore', $request, 'Post restauré avec succès.');
         return $this->redirectToRoute('moderation_dashboard');
     }
 
@@ -55,16 +66,19 @@ class ModerationController extends AbstractController
     #[IsGranted('ROLE_MODERATOR')]
     public function deletePost(Post $post, Request $request): Response
     {
-        $this->processAction($post, 'deleteByModerator', $request);
+        $this->executeModerationAction($post, 'deleteByModerator', $request, 'Post supprimé définitivement.');
         return $this->redirectToRoute('moderation_dashboard');
     }
 
-    // Actions Commentaires
+    // ======================================================
+    // ACTIONS SUR COMMENTAIRES
+    // ======================================================
+
     #[Route('/comment/{id}/hide', name: 'moderation_comment_hide', methods: ['POST'])]
     #[IsGranted('ROLE_MODERATOR')]
     public function hideComment(Comment $comment, Request $request): Response
     {
-        $this->processAction($comment, 'hideByModerator', $request);
+        $this->executeModerationAction($comment, 'hideByModerator', $request, 'Commentaire masqué avec succès.');
         return $this->redirectToRoute('moderation_dashboard');
     }
 
@@ -72,7 +86,7 @@ class ModerationController extends AbstractController
     #[IsGranted('ROLE_MODERATOR')]
     public function restoreComment(Comment $comment, Request $request): Response
     {
-        $this->processAction($comment, 'restore', $request);
+        $this->executeModerationAction($comment, 'restore', $request, 'Commentaire restauré avec succès.');
         return $this->redirectToRoute('moderation_dashboard');
     }
 
@@ -80,14 +94,25 @@ class ModerationController extends AbstractController
     #[IsGranted('ROLE_MODERATOR')]
     public function deleteComment(Comment $comment, Request $request): Response
     {
-        $this->processAction($comment, 'deleteByModerator', $request);
+        $this->executeModerationAction($comment, 'deleteByModerator', $request, 'Commentaire supprimé définitivement.');
         return $this->redirectToRoute('moderation_dashboard');
     }
 
-    private function processAction($content, string $action, Request $request): void
-    {
+    // ======================================================
+    // MÉTHODE PRIVÉE
+    // ======================================================
+
+    /**
+     * Exécute une action de modération de façon sécurisée.
+     */
+    private function executeModerationAction(
+        ModeratableContentInterface $content,
+        string $actionMethod,
+        Request $request,
+        string $successMessage
+    ): void {
         if (!$this->isCsrfTokenValid('moderation_' . $content->getId(), $request->request->get('_token'))) {
-            $this->addFlash('error', 'Token invalide.');
+            $this->addFlash('error', 'Token CSRF invalide.');
             return;
         }
 
@@ -95,8 +120,9 @@ class ModerationController extends AbstractController
         $moderator = $this->getUser();
         $reason = $request->request->get('reason');
 
-        $this->moderationService->$action($content, $moderator, $reason);
+        // Appel dynamique sécurisé
+        $this->moderationService->$actionMethod($content, $moderator, $reason);
 
-        $this->addFlash('success', 'Action effectuée avec succès.');
+        $this->addFlash('success', $successMessage);
     }
 }

@@ -17,13 +17,13 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * ReportService – Gestion des signalements et de l’auto-masquage.
+ * ReportService – Gestion des signalements et de l’auto-modération.
  *
- * Responsabilités principales :
+ * Responsabilités :
  * - Création sécurisée d’un signalement (Post ou Comment)
  * - Protection contre les doubles signalements
- * - Logique d’auto-modération basée sur seuil et ratio
- * - Délégation totale des actions de masquage à ModerationService
+ * - Logique d’auto-modération (seuil + ratio)
+ * - Délégation totale des actions de masquage/restauration à ModerationService
  */
 final class ReportService
 {
@@ -70,7 +70,7 @@ final class ReportService
     ): void {
         $this->em->wrapInTransaction(function () use ($content, $user, $reason, $reasonDetail) {
 
-            // Création du signalement via Target
+            // Création du signalement via Target (polymorphisme propre)
             $report = ReportFactory::create(
                 Target::fromContent($content),
                 $user,
@@ -83,13 +83,13 @@ final class ReportService
                 $this->em->persist($report);
                 $this->em->flush();
             } catch (UniqueConstraintViolationException) {
-                return; // Déjà signalé par cet utilisateur
+                return; // L'utilisateur a déjà signalé ce contenu
             }
 
-            // Mise à jour du compteur
+            // Mise à jour du compteur dénormalisé
             $content->incrementReportCount();
 
-            // Auto-modération si nécessaire
+            // Vérification de l’auto-modération
             $this->handleAutoModeration($content);
         });
     }
@@ -105,20 +105,24 @@ final class ReportService
         }
 
         $reportCount = $content->getReportCount();
+        if ($reportCount < self::MIN_REPORT_THRESHOLD) {
+            return;
+        }
 
+        // Score de base (pour les posts) ou 1 (pour les commentaires)
         $score = $content instanceof Post 
             ? max(1, $content->getReactionScore()) 
             : 1;
 
         $ratio = $reportCount / $score;
 
-        if ($reportCount >= self::MIN_REPORT_THRESHOLD && $ratio >= self::RATIO_THRESHOLD) {
+        if ($ratio >= self::RATIO_THRESHOLD) {
             $this->moderationService->autoHide($content);
         }
     }
 
     // ======================================================
-    // MÉTHODES DE LECTURE
+    // QUERIES (Read)
     // ======================================================
 
     public function hasAlreadyReportedPost(Post $post, User $user): bool

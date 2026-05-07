@@ -15,15 +15,12 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repository des signalements (Reports).
+ * ReportRepository – Gestion des signalements.
  *
  * Responsabilités :
- * - Vérification de doublons (hasAlreadyReported*)
- * - Récupération des signalements pour le dashboard modération
+ * - Vérification des doublons
+ * - Récupération des signalements pour modération
  * - Comptage pour l’auto-modération
- *
- * Les compteurs dénormalisés (reportCount) sont maintenus par ReportService,
- * pas par ce repository.
  */
 class ReportRepository extends ServiceEntityRepository implements ReportRepositoryInterface
 {
@@ -32,29 +29,23 @@ class ReportRepository extends ServiceEntityRepository implements ReportReposito
         parent::__construct($registry, Report::class);
     }
 
+    // ======================================================
+    // ANTI-DOUBLONS
+    // ======================================================
+
     public function hasAlreadyReportedPost(Post $post, User $user): bool
     {
-        return (int) $this->createQueryBuilder('r')
-            ->select('COUNT(r.id)')
-            ->where('r.post = :post')
-            ->andWhere('r.user = :user')
-            ->setParameter('post', $post)
-            ->setParameter('user', $user)
-            ->getQuery()
-            ->getSingleScalarResult() > 0;
+        return $this->countByContent($post, $user) > 0;
     }
 
     public function hasAlreadyReportedComment(Comment $comment, User $user): bool
     {
-        return (int) $this->createQueryBuilder('r')
-            ->select('COUNT(r.id)')
-            ->where('r.comment = :comment')
-            ->andWhere('r.user = :user')
-            ->setParameter('comment', $comment)
-            ->setParameter('user', $user)
-            ->getQuery()
-            ->getSingleScalarResult() > 0;
+        return $this->countByContent($comment, $user) > 0;
     }
+
+    // ======================================================
+    // DASHBOARD MODÉRATION
+    // ======================================================
 
     public function findAllByPost(Post $post): array
     {
@@ -95,14 +86,17 @@ class ReportRepository extends ServiceEntityRepository implements ReportReposito
                 ReportReason::INAPPROPRIATE->value,
             ])
             ->setParameter('recent', new \DateTimeImmutable('-7 days'))
-            ->orderBy('FIELD(r.reason, :seriousReasons)', 'ASC') // priorise les graves
-            ->addOrderBy('r.createdAt', 'DESC')
+            ->orderBy('r.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
     }
 
-    public function countByContent(ModeratableContentInterface $content): int
+    // ======================================================
+    // COMPTAGE
+    // ======================================================
+
+    public function countByContent(ModeratableContentInterface $content, ?User $user = null): int
     {
         $qb = $this->createQueryBuilder('r')
             ->select('COUNT(r.id)');
@@ -111,6 +105,11 @@ class ReportRepository extends ServiceEntityRepository implements ReportReposito
             $qb->where('r.post = :content');
         } else {
             $qb->where('r.comment = :content');
+        }
+
+        if ($user !== null) {
+            $qb->andWhere('r.user = :user')
+               ->setParameter('user', $user);
         }
 
         return (int) $qb->setParameter('content', $content)
