@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Ui\Controller;
 
+use App\Application\Dto\CreateCommentDto;
 use App\Domain\Entity\Comment;
 use App\Domain\Entity\Post;
 use App\Ui\Form\CommentFormType;
@@ -14,6 +15,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+/**
+ * CommentController – Gestion des commentaires.
+ */
 #[Route('/posts/{postId}/comments')]
 class CommentController extends AbstractController
 {
@@ -32,13 +36,10 @@ class CommentController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $data = $form->getData();
+            /** @var CreateCommentDto $dto */
+            $dto = $form->getData();
 
-            $this->commentService->createComment(
-                $data->getContent(),
-                $this->getUser(),
-                $post
-            );
+            $this->commentService->createComment($dto, $this->getUser(), $post);
 
             $this->addFlash('success', 'Commentaire ajouté avec succès.');
         } else {
@@ -56,6 +57,7 @@ class CommentController extends AbstractController
     ): Response {
         $this->denyAccessUnlessGranted('COMMENT_DELETE', $comment);
 
+        // Sécurité supplémentaire : le commentaire doit bien appartenir au post
         if ($comment->getPost()->getId() !== $post->getId()) {
             throw $this->createNotFoundException();
         }
@@ -67,7 +69,7 @@ class CommentController extends AbstractController
 
         $this->commentService->deleteByAuthor($comment, $this->getUser());
 
-        $this->addFlash('success', 'Commentaire supprimé.');
+        $this->addFlash('success', 'Commentaire supprimé avec succès.');
 
         return $this->redirectToRoute('post_show', ['id' => $post->getId()]);
     }
