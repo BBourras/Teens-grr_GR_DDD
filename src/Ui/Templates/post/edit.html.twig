@@ -1,4 +1,3 @@
-{# templates/post/edit.html.twig #}
 {% extends 'base.html.twig' %}
 
 {% block title %}Modifier le post{% endblock %}
@@ -7,53 +6,42 @@
 <div class="row justify-content-center">
     <div class="col-md-8">
 
-        <h2 class="mb-4">✏️ Modifier le post</h2>
+        <h2 class="mb-4">
+            ✏️ Modifier le post
+        </h2>
 
         {% include 'partials/flash/_flash_messages.html.twig' %}
 
-        {{ form_start(form, { attr: { novalidate: 'novalidate' } }) }}
+        {% include 'partials/posts/_post_form.html.twig' with {
+            form: form,
+            submit_label: 'Mettre à jour',
+            submit_class: 'btn-success'
+        } only %}
 
-            <div class="mb-3">
-                {{ form_label(form.title) }}
-                {{ form_widget(form.title, { attr: { class: 'form-control' } }) }}
-                {{ form_errors(form.title) }}
-            </div>
+        {# ── Suppression du post ───────────────────────────── #}
 
-            <div class="mb-3">
-                {{ form_label(form.content) }}
-                {{ form_widget(form.content, { attr: { class: 'form-control' } }) }}
-                {{ form_errors(form.content) }}
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-success">
-                    Mettre à jour
-                </button>
-                <a href="{{ path('post_show', { id: post.id }) }}"
-                   class="btn btn-outline-secondary">
-                    Annuler
-                </a>
-            </div>
-
-        {{ form_end(form) }}
-
-        {# ── Suppression du post ──────────────────────────────────────────── #}
-        {#
-            Formulaire séparé avec token CSRF.
-            PostController::delete() vérifie csrf_token('delete_post_' ~ id).
-        #}
         {% if is_granted('POST_DELETE', post) %}
             <div class="mt-4 pt-3 border-top text-end">
-                <form method="post"
-                      action="{{ path('post_delete', { id: post.id }) }}">
-                    <input type="hidden" name="_token"
-                           value="{{ csrf_token('delete_post_' ~ post.id) }}">
-                    <button type="submit"
-                            class="btn btn-sm btn-outline-danger"
-                            onclick="return confirm('Supprimer définitivement ce post ?')">
+
+                <form
+                    method="post"
+                    action="{{ path('post_delete', { id: post.id }) }}"
+                >
+                    <input
+                        type="hidden"
+                        name="_token"
+                        value="{{ csrf_token('delete' ~ post.id) }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="btn btn-sm btn-outline-danger"
+                        onclick="return confirm('Supprimer définitivement ce post ?')"
+                    >
                         🗑 Supprimer le post
                     </button>
                 </form>
+
             </div>
         {% endif %}
 

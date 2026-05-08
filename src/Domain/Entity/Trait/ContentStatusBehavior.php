@@ -13,6 +13,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Trait ContentStatusBehavior
  *
  * Comportement commun pour gérer le statut des entités modérables (Post & Comment).
+ * Implémente ModeratableContentInterface.
  */
 trait ContentStatusBehavior
 {
@@ -79,6 +80,17 @@ trait ContentStatusBehavior
         return !$this->isVisible();
     }
 
+    public function isAutoModerated(): bool
+    {
+        return $this->status === ContentStatus::AUTO_HIDDEN;
+    }
+
+    public function isManuallyModerated(): bool
+    {
+        return $this->status === ContentStatus::HIDDEN_BY_MODERATOR 
+            || $this->status === ContentStatus::DELETED;
+    }
+
     public function incrementReportCount(): static
     {
         $this->reportCount++;
@@ -90,7 +102,7 @@ trait ContentStatusBehavior
         return $this->reportCount;
     }
 
-    // Délégation au Formatter (plus propre)
+    // Délégation au Formatter
     public function label(): string
     {
         return $this->formatter->label($this->status);

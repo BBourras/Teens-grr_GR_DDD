@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Service;
 
 use App\Application\Dto\CreatePostDto;
+use App\Application\Dto\EditPostDto;
 use App\Domain\Contract\ModerationServiceInterface;
 use App\Domain\Contract\PostRepositoryInterface;
 use App\Domain\Entity\Post;
@@ -55,9 +56,16 @@ final class PostService
         return $post;
     }
 
-    public function update(Post $post, string $newTitle, string $newContent): void
+    /**
+     * Met à jour le contenu d’un Post existant.
+     */
+    public function update(Post $post, EditPostDto $dto): void
     {
-        $post->updateContent($newTitle, $newContent);
+        $post->updateContent(
+            $dto->title,
+            $dto->content
+        );
+
         $this->em->flush();
     }
 

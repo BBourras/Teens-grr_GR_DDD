@@ -1,38 +1,53 @@
 {# templates/partials/posts/_post_form.html.twig #}
+{#
+    Partial réutilisable pour création / édition d’un Post.
 
-{{ form_start(form, {attr: {class: 'post-form'}}) }}
+    Variables attendues :
+    - form
+    - submit_label
+    - submit_class (optionnel)
+#}
+
+{{ form_start(form, {
+    attr: {
+        novalidate: 'novalidate',
+        class: 'post-form'
+    }
+}) }}
 
     <div class="mb-4">
-        {{ form_label(form.title, 'Titre du post') }}
+        {{ form_label(form.title) }}
+
         {{ form_widget(form.title, {
             attr: {
-                class: 'form-control form-control-lg',
-                placeholder: 'Un titre bien ironique...'
+                class: 'form-control form-control-lg'
             }
         }) }}
+
         {{ form_errors(form.title) }}
     </div>
 
     <div class="mb-4">
-        {{ form_label(form.content, 'Contenu') }}
+        {{ form_label(form.content) }}
+
         {{ form_widget(form.content, {
             attr: {
-                class: 'form-control',
-                rows: 12,
-                placeholder: 'Racontez votre anecdote sur les ados...'
+                class: 'form-control'
             }
         }) }}
+
         {{ form_errors(form.content) }}
     </div>
 
-    <div class="d-grid gap-2">
-        <button type="submit" class="btn btn-primary btn-lg">
-            {% if form.vars.value.id %}
-                Modifier le post
-            {% else %}
-                Publier le post
-            {% endif %}
+    <div class="d-flex gap-2">
+        <button
+            type="submit"
+            class="btn {{ submit_class|default('btn-primary') }}"
+        >
+            {{ submit_label }}
         </button>
+
+        {% block post_form_cancel %}{% endblock %}
     </div>
 
 {{ form_end(form) }}

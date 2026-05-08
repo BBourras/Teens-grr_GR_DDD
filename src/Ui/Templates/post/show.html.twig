@@ -1,5 +1,3 @@
-{# templates/post/show.html.twig #}
-
 {% extends 'base.html.twig' %}
 
 {% block title %}{{ post.title }} — Teens-GRR{% endblock %}
@@ -11,14 +9,14 @@
 
         <article class="post-detail">
 
-            {# Statut du post si masqué #}
+            {# === MESSAGE DE STATUT DU POST === #}
             {% if not post.isVisible() %}
                 <div class="alert alert-{{ post.isAutoModerated() ? 'warning' : 'danger' }} d-flex align-items-center gap-2 mb-4">
                     <i class="bi {% if post.isAutoModerated() %}bi-exclamation-triangle{% else %}bi-x-circle{% endif %} fs-4"></i>
                     <div>
                         {% if post.isAutoModerated() %}
-                            Ce post a été <strong>masqué automatiquement</strong>.<br>
-                            Un modérateur l’examine actuellement.
+                            Ce post a été <strong>masqué automatiquement</strong> par le système.<br>
+                            <small>Un modérateur l’examine actuellement.</small>
                         {% elseif post.isManuallyModerated() %}
                             Ce post a été <strong>masqué par un modérateur</strong>.
                         {% elseif post.isDeleted() %}
@@ -28,7 +26,7 @@
                 </div>
             {% endif %}
 
-            {# Titre du post #}
+            {# Titre #}
             <h1 class="display-5 fw-bold mb-3">{{ post.title }}</h1>
 
             {# Métadonnées #}
@@ -37,7 +35,7 @@
                 <span><i class="bi bi-clock"></i> {{ post.createdAt|date('d/m/Y - H:i') }}</span>
             </div>
 
-            {# Contenu du post #}
+            {# Contenu #}
             <div class="post-content fs-5 lh-lg mb-5">
                 {{ post.content|nl2br }}
             </div>
@@ -53,7 +51,7 @@
 
             <hr class="my-5">
 
-            {# ====================== SECTION COMMENTAIRES ====================== #}
+            {# ====================== COMMENTAIRES ====================== #}
             <section id="comments">
 
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -61,15 +59,9 @@
                         Commentaires 
                         <span class="badge bg-secondary rounded-pill">{{ comments|length }}</span>
                     </h3>
-
-                    {% if commentForm is defined and commentForm is not null %}
-                        <a href="#comment-form" class="btn btn-primary btn-sm">
-                            <i class="bi bi-plus-circle"></i> Ajouter un commentaire
-                        </a>
-                    {% endif %}
                 </div>
 
-                {# Liste des commentaires (mise en avant) #}
+                {# Liste des commentaires #}
                 {% if comments is not empty %}
                     <div class="comments-list mb-5">
                         {% for comment in comments %}
@@ -80,18 +72,22 @@
                     <div class="alert alert-info text-center py-5">
                         <i class="bi bi-chat-dots display-6 text-muted mb-3"></i>
                         <p class="mb-0">Aucun commentaire pour le moment.</p>
-                        <p class="small text-muted">Soyez le premier à réagir !</p>
                     </div>
                 {% endif %}
 
-                {# Formulaire de commentaire  #}
-                {% if commentForm is defined and commentForm is not null %}
+                {# Formulaire de commentaire — affiché seulement si connecté ET post visible ou auteur #}
+                {% if is_granted('ROLE_USER') and (post.isVisible() or (app.user and app.user.id == post.author.id)) %}
                     <div id="comment-form" class="bg-light border rounded-3 p-4 shadow-sm">
                         <h5 class="mb-3">Ajouter un commentaire</h5>
                         {% include 'partials/comments/_comment_form.html.twig' with {
                             form: commentForm,
                             post: post
-                            } %}
+                        } %}
+                    </div>
+                {% elseif is_granted('ROLE_USER') %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Vous ne pouvez pas commenter ce post car il a été masqué ou supprimé.
                     </div>
                 {% else %}
                     <div class="alert alert-info text-center">

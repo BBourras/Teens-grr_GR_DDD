@@ -6,12 +6,14 @@ namespace App\Application\Dto;
 
 /**
  * DTO pour la création d'un Post.
- * Utilisé entre le Formulaire et le Service.
+ *
+ * Utilisé entre le formulaire de création
+ * et le PostService.
  */
 final class CreatePostDto
 {
     public function __construct(
         public string $title = '',
-        public string $content = ''
+        public string $content = '',
     ) {}
 }

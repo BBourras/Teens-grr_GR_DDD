@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Ui\Controller;
 
 use App\Application\Dto\CreatePostDto;
+use App\Application\Dto\EditPostDto;
+use App\Ui\Form\CreatePostFormType;
+use App\Ui\Form\EditPostFormType;
 use App\Domain\Entity\Post;
 use App\Domain\Enum\ReportReason;
-use App\Domain\Enum\VoteType;                    // ← Import ajouté
-use App\Ui\Form\PostFormType;
+use App\Domain\Enum\VoteType;
 use App\Application\Service\PostService;
 use App\Application\Service\VoteService;
+use App\Ui\Form\CommentFormType;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -84,11 +87,20 @@ class PostController extends AbstractController
     #[Route('/{id<\d+>}', name: 'post_show', methods: ['GET'])]
     public function show(Post $post, Request $request): Response
     {
+        $commentForm = null;
+
+        // On affiche le formulaire seulement si l'utilisateur est connecté
+        // et que le post est visible (ou que c'est son auteur)
+        if ($this->getUser() && ($post->isVisible() || $post->getAuthor() === $this->getUser())) {
+            $commentForm = $this->createForm(CommentFormType::class);
+        }
+
         return $this->render('post/show.html.twig', [
-            'post'          => $post,
-            'comments'      => $post->getComments(),
-            'postScores'    => $this->voteService->getVoteScoreByType($post),
-            'userVote'      => $this->getCurrentUserVote($post, $request),
+            'post'         => $post,
+            'comments'     => $post->getComments(),
+            'postScores'   => $this->voteService->getVoteScoreByType($post),
+            'userVote'     => $this->getCurrentUserVote($post, $request),
+            'commentForm'  => $commentForm,
             'reportReasons' => ReportReason::cases(),
         ]);
     }
@@ -101,19 +113,22 @@ class PostController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function new(Request $request): Response
     {
-        $form = $this->createForm(PostFormType::class);
+        $dto = new CreatePostDto();
+
+        $form = $this->createForm(CreatePostFormType::class, $dto);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var CreatePostDto $dto */
-            $dto = $form->getData();
 
-            $post = $this->postService->createPost($dto, $this->getUser());
+            $post = $this->postService->createPost(
+                $dto,
+                $this->getUser()
+            );
 
             $this->addFlash('success', 'Post publié avec succès !');
 
             return $this->redirectToRoute('post_show', [
-                'id' => $post->getId()
+                'id' => $post->getId(),
             ]);
         }
 
@@ -127,20 +142,20 @@ class PostController extends AbstractController
     {
         $this->denyAccessUnlessGranted('POST_EDIT', $post);
 
-        $form = $this->createForm(PostFormType::class, $post);
+        // Hydratation du DTO depuis l'entité
+        $dto = EditPostDto::fromEntity($post);
+
+        $form = $this->createForm(EditPostFormType::class, $dto);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->postService->update(
-                $post,
-                $post->getTitle(),
-                $post->getContent()
-            );
+
+            $this->postService->update($post, $dto);
 
             $this->addFlash('success', 'Post modifié avec succès.');
 
             return $this->redirectToRoute('post_show', [
-                'id' => $post->getId()
+                'id' => $post->getId(),
             ]);
         }
 
@@ -155,7 +170,7 @@ class PostController extends AbstractController
     {
         $this->denyAccessUnlessGranted('POST_DELETE', $post);
 
-        if (!$this->isCsrfTokenValid('delete' . $post->getId(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('delete_post' . $post->getId(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Token invalide.');
             return $this->redirectToRoute('post_show', ['id' => $post->getId()]);
         }

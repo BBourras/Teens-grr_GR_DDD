@@ -5,12 +5,7 @@
     form,
     {
       attr: {
-        action: path(
-          'comment_create',
-          {
-            id: post.id
-          }
-        ),
+        action: path('comment_create', { postId: post.id }),
         class: 'comment-form'
       }
     }
@@ -25,7 +20,7 @@
         attr: {
           class: 'form-control',
           rows: 5,
-          placeholder: 'Votre commentaire ou réaction… Soyez respectueux 😉'
+          placeholder: 'Votre réaction ou commentaire…'
         }
       }
     )
