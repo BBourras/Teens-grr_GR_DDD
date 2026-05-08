@@ -11,8 +11,12 @@ use App\Domain\Enum\ReportReason;
  */
 final readonly class ReportReasonFormatter
 {
-    public function label(ReportReason $reason): string
+    public function label(ReportReason|string $reason): string
     {
+        if (is_string($reason)) {
+            $reason = ReportReason::tryFrom($reason) ?? ReportReason::OTHER;
+        }
+
         return match ($reason) {
             ReportReason::SPAM           => 'Spam',
             ReportReason::HARASSMENT     => 'Harcèlement',
@@ -24,8 +28,12 @@ final readonly class ReportReasonFormatter
         };
     }
 
-    public function labelKey(ReportReason $reason): string
+    public function labelKey(ReportReason|string $reason): string
     {
+        if (is_string($reason)) {
+            $reason = ReportReason::tryFrom($reason) ?? ReportReason::OTHER;
+        }
+
         return match ($reason) {
             ReportReason::SPAM           => 'report.reason.spam',
             ReportReason::HARASSMENT     => 'report.reason.harassment',

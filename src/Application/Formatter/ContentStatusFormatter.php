@@ -7,12 +7,17 @@ namespace App\Application\Formatter;
 use App\Domain\Enum\ContentStatus;
 
 /**
- * Formatter pour les statuts de contenu (Post et Comment).
+ * Formatter pour les statuts de contenu (Post, Comment, Logs).
+ * Accepte à la fois l'enum et une string (cas des logs en base).
  */
 final readonly class ContentStatusFormatter
 {
-    public function label(ContentStatus $status): string
+    public function label(ContentStatus|string $status): string
     {
+        if (is_string($status)) {
+            $status = ContentStatus::tryFrom($status) ?? ContentStatus::PUBLISHED;
+        }
+
         return match ($status) {
             ContentStatus::PUBLISHED           => 'Publié',
             ContentStatus::AUTO_HIDDEN         => 'Masqué automatiquement',
@@ -21,8 +26,12 @@ final readonly class ContentStatusFormatter
         };
     }
 
-    public function labelKey(ContentStatus $status): string
+    public function labelKey(ContentStatus|string $status): string
     {
+        if (is_string($status)) {
+            $status = ContentStatus::tryFrom($status) ?? ContentStatus::PUBLISHED;
+        }
+
         return match ($status) {
             ContentStatus::PUBLISHED           => 'content.status.published',
             ContentStatus::AUTO_HIDDEN         => 'content.status.auto_hidden',

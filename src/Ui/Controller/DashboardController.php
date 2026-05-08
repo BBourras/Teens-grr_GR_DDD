@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Ui\Controller;
 
+use App\Application\Formatter\ContentStatusFormatter;
+use App\Application\Formatter\ReportReasonFormatter;   // ← Ajout
 use App\Domain\Entity\User;
 use App\Infrastructure\Persistence\Repository\CommentRepository;
 use App\Infrastructure\Persistence\Repository\PostRepository as RepositoryPostRepository;
@@ -17,12 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * DashboardController - Gestion du dashboard personnel de l'utilisateur
- *
- * Ce contrôleur centralise toutes les vues liées au profil utilisateur :
- * - Tableau de bord général
- * - Mes posts, mes commentaires, mes signalements
- * - Historique complet de modération
+ * DashboardController - Gestion du dashboard personnel de l'utilisateur.
  */
 #[Route('/my-account')]
 #[IsGranted('ROLE_USER')]
@@ -34,10 +31,12 @@ class DashboardController extends AbstractController
         private readonly ReportRepository $reportRepository,
         private readonly ModerationActionLogRepository $logRepository,
         private readonly PaginatorInterface $paginator,
+        private readonly ContentStatusFormatter $statusFormatter,
+        private readonly ReportReasonFormatter $reportReasonFormatter,   // ← Injecté
     ) {}
 
     /**
-     * Tableau de bord principal de l'utilisateur
+     * Tableau de bord principal
      */
     #[Route('', name: 'user_dashboard', methods: ['GET'])]
     public function dashboard(): Response
@@ -46,33 +45,21 @@ class DashboardController extends AbstractController
         $user = $this->getUser();
 
         return $this->render('dashboard/dashboard.html.twig', [
-            'user' => $user,
+            'user'                    => $user,
+            'statusFormatter'         => $this->statusFormatter,
+            'report_reason_formatter' => $this->reportReasonFormatter,   // ← Passé au template
 
-            'myPosts' => $this->postRepository->findBy(
-                ['author' => $user],
-                ['createdAt' => 'DESC'],
-                20
-            ),
-
-            'myComments' => $this->commentRepository->findBy(
-                ['author' => $user],
-                ['createdAt' => 'DESC'],
-                30
-            ),
-
-            'myReports' => $this->reportRepository->findBy(
-                ['user' => $user],
-                ['createdAt' => 'DESC'],
-                15
-            ),
-
-            'myModerationLogs' => $this->logRepository->findModActByUser($user, 30),
+            'myPosts'          => $this->postRepository->findBy(['author' => $user], ['createdAt' => 'DESC'], 20),
+            'myComments'       => $this->commentRepository->findBy(['author' => $user], ['createdAt' => 'DESC'], 30),
+            'myReports'        => $this->reportRepository->findBy(['user' => $user], ['createdAt' => 'DESC'], 15),
+            'myModerationLogs' => $this->logRepository->findByAffectedUser($user, 30),
         ]);
     }
 
-    /**
-     * Liste complète des posts de l'utilisateur avec pagination
-     */
+    // ======================================================
+    // AUTRES PAGES DU DASHBOARD
+    // ======================================================
+
     #[Route('/posts', name: 'user_my_posts', methods: ['GET'])]
     public function myPosts(Request $request): Response
     {
@@ -84,20 +71,14 @@ class DashboardController extends AbstractController
             ->setParameter('user', $user)
             ->orderBy('p.createdAt', 'DESC');
 
-        $pagination = $this->paginator->paginate(
-            $queryBuilder,
-            $request->query->getInt('page', 1),
-            12
-        );
+        $pagination = $this->paginator->paginate($queryBuilder, $request->query->getInt('page', 1), 12);
 
         return $this->render('dashboard/my_posts.html.twig', [
-            'pagination' => $pagination,
+            'pagination'      => $pagination,
+            'statusFormatter' => $this->statusFormatter,
         ]);
     }
 
-    /**
-     * Liste des commentaires publiés par l'utilisateur
-     */
     #[Route('/comments', name: 'user_my_comments', methods: ['GET'])]
     public function myComments(): Response
     {
@@ -105,16 +86,11 @@ class DashboardController extends AbstractController
         $user = $this->getUser();
 
         return $this->render('dashboard/my_comments.html.twig', [
-            'comments' => $this->commentRepository->findBy(
-                ['author' => $user],
-                ['createdAt' => 'DESC']
-            ),
+            'comments'        => $this->commentRepository->findBy(['author' => $user], ['createdAt' => 'DESC']),
+            'statusFormatter' => $this->statusFormatter,
         ]);
     }
 
-    /**
-     * Liste des signalements effectués par l'utilisateur
-     */
     #[Route('/reports', name: 'user_my_reports', methods: ['GET'])]
     public function myReports(): Response
     {
@@ -122,16 +98,12 @@ class DashboardController extends AbstractController
         $user = $this->getUser();
 
         return $this->render('dashboard/my_reports.html.twig', [
-            'reports' => $this->reportRepository->findBy(
-                ['user' => $user],
-                ['createdAt' => 'DESC']
-            ),
+            'reports'                 => $this->reportRepository->findBy(['user' => $user], ['createdAt' => 'DESC']),
+            'statusFormatter'         => $this->statusFormatter,
+            'report_reason_formatter' => $this->reportReasonFormatter,   // ← Important pour ce template
         ]);
     }
 
-    /**
-     * Historique complet des actions de modération sur les contenus de l'utilisateur
-     */
     #[Route('/historique', name: 'user_moderation_history', methods: ['GET'])]
     public function moderationHistory(): Response
     {
@@ -139,7 +111,9 @@ class DashboardController extends AbstractController
         $user = $this->getUser();
 
         return $this->render('dashboard/moderation_history.html.twig', [
-            'logs' => $this->logRepository->findModActByUser($user, 50),
+            'logs'                    => $this->logRepository->findByAffectedUser($user, 50),
+            'statusFormatter'         => $this->statusFormatter,
+            'report_reason_formatter' => $this->reportReasonFormatter,
         ]);
     }
 }

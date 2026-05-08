@@ -1,5 +1,3 @@
-{# templates/dashboard/moderation_history.html.twig #}
-
 {% extends 'base.html.twig' %}
 
 {% block title %}
@@ -8,7 +6,6 @@
 
 {% block body %}
   <div class="container mt-4">
-    {# Header aligné comme my_comments #}
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="mb-0">
         <i class="bi bi-clock-history me-2"></i>
@@ -24,8 +21,7 @@
       <div class="alert alert-info text-center py-5">
         <i class="bi bi-clock-history display-4 text-muted mb-3"></i>
         <h5>
-          Aucune action de modération n'a encore été enregistrée sur vos
-          contenus.
+          Aucune action de modération n'a encore été enregistrée sur vos contenus.
         </h5>
       </div>
     {% else %}
@@ -33,55 +29,31 @@
         <table class="table table-hover align-middle">
           <thead class="table-dark">
             <tr>
-              <th>
-                Date
-              </th>
-              <th>
-                Action
-              </th>
-              <th>
-                Contenu concerné
-              </th>
-              <th>
-                Raison
-              </th>
-              <th>
-                Modérateur
-              </th>
+              <th>Date</th>
+              <th>Action</th>
+              <th>Contenu concerné</th>
+              <th>Raison</th>
+              <th>Modérateur</th>
             </tr>
           </thead>
           <tbody>
             {% for log in logs %}
               <tr>
-                <td>
-                  {{ log.createdAt|date('d/m/Y - H:i') }}
-                </td>
+                <td>{{ log.createdAt|date('d/m/Y - H:i') }}</td>
 
                 <td>
-                  <span class="badge bg-{{
-                    log.isAutomaticAction()
-                      ? 'warning'
-                      : 'primary'
-                    }}">
-                    {{ log.actionType.label() }}
+                  <span class="badge bg-{{ log.moderator ? 'primary' : 'warning' }}">
+                    {{ statusFormatter.label(log.newStatus) }}
                   </span>
                 </td>
 
                 <td>
-                  {% if log.isForPost() %}
-                    <a href="{{
-                      path(
-                        'post_show',
-                        {
-                          id: log.post.id
-                        }
-                      )
-                      }}">
-                      {{ (log.post.title|slice(0, 60)) ~ '...' }}
+                  {% if log.post %}
+                    <a href="{{ path('post_show', {id: log.post.id}) }}">
+                      {{ log.post.title|slice(0, 60) }}{% if log.post.title|length > 60 %}…{% endif %}
                     </a>
-                  {% else %}
-                    Commentaire sur « {{ (log.comment.post.title|slice(0, 50))
-                      ~ '...' }} »
+                  {% elseif log.comment %}
+                    Commentaire sur « {{ log.comment.post.title|slice(0, 50) }}… »
                   {% endif %}
                 </td>
 
@@ -93,7 +65,7 @@
                   {% if log.moderator %}
                     {{ log.moderator.username }}
                   {% else %}
-                    <em>Système</em>
+                    <em class="text-muted">Système (auto)</em>
                   {% endif %}
                 </td>
               </tr>

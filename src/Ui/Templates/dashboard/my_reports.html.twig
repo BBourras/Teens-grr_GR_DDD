@@ -1,5 +1,3 @@
-{# templates/dashboard/my_reports.html.twig #}
-
 {% extends 'base.html.twig' %}
 
 {% block title %}Mes signalements - {{ app.user.username }}{% endblock %}
@@ -40,23 +38,22 @@
                             <tr>
                                 <!-- Date -->
                                 <td class="text-nowrap">
-                                    <small class="text-muted">{{ report.createdAt|date('d/m/Y - H:i') }}</small><br>
-                                    <small>{{ report.createdAt|date('H:i') }}</small>
+                                    <small class="text-muted">{{ report.createdAt|date('d/m/Y - H:i') }}</small>
                                 </td>
 
-                                <!-- Type -->
+                                <!-- Type de contenu -->
                                 <td>
-                                    <span class="badge {% if report.isForPost() %}bg-primary{% else %}bg-secondary{% endif %}">
-                                        {{ report.isForPost() ? 'Post' : 'Commentaire' }}
+                                    <span class="badge {% if report.post %}bg-primary{% else %}bg-secondary{% endif %}">
+                                        {{ report.post ? 'Post' : 'Commentaire' }}
                                     </span>
                                 </td>
 
                                 <!-- Raison principale -->
                                 <td>
-                                    <strong>{{ report.reason.label() }}</strong>
+                                    <strong>{{ report_reason_formatter.label(report.reason) }}</strong>
                                 </td>
 
-                                <!-- Détail (reasonDetail) -->
+                                <!-- Détail -->
                                 <td class="text-muted">
                                     {% if report.reasonDetail %}
                                         {{ report.reasonDetail|slice(0, 80) }}{% if report.reasonDetail|length > 80 %}…{% endif %}
@@ -67,7 +64,7 @@
 
                                 <!-- Contenu concerné -->
                                 <td>
-                                    {% if report.isForPost() %}
+                                    {% if report.post %}
                                         <a href="{{ path('post_show', {id: report.post.id}) }}" class="text-decoration-none">
                                             {{ report.post.title|slice(0, 65) }}{% if report.post.title|length > 65 %}…{% endif %}
                                         </a>
@@ -78,15 +75,14 @@
                                     {% endif %}
                                 </td>
 
-                                <!-- Statut actuel du contenu -->
+                                <!-- Statut actuel -->
                                 <td>
-                                    {% set status = report.isForPost() ? report.post.getStatusEnum() : report.comment.getStatusEnum() %}
+                                    {% set status = report.post ? report.post.getStatusEnum() : report.comment.getStatusEnum() %}
                                     <span class="badge 
                                         {% if status.isVisible() %}bg-success
-                                        {% elseif status.isAutoModerated() %}bg-warning
-                                        {% elseif status.isManuallyModerated() %}bg-danger
-                                        {% else %}bg-secondary{% endif %}">
-                                        {{ status.label() }}
+                                        {% elseif status.isHidden() %}bg-warning
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ statusFormatter.label(status) }}
                                     </span>
                                 </td>
                             </tr>

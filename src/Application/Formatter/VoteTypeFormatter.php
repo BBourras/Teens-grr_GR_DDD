@@ -7,17 +7,16 @@ namespace App\Application\Formatter;
 use App\Domain\Enum\VoteType;
 
 /**
- * Formatter responsable de la présentation des VoteType (UI, Twig, formulaires).
- *
- * Gardé léger pour un DDD Light.
+ * Formatter pour les types de vote.
  */
 final readonly class VoteTypeFormatter
 {
-    /**
-     * Emoji associé au type de vote.
-     */
-    public function emoji(VoteType $voteType): string
+    public function emoji(VoteType|string $voteType): string
     {
+        if (is_string($voteType)) {
+            $voteType = VoteType::tryFrom($voteType) ?? VoteType::LAUGH;
+        }
+
         return match ($voteType) {
             VoteType::LAUGH         => '😂',
             VoteType::ANGRY         => '😡',
@@ -25,11 +24,12 @@ final readonly class VoteTypeFormatter
         };
     }
 
-    /**
-     * Label en français.
-     */
-    public function label(VoteType $voteType): string
+    public function label(VoteType|string $voteType): string
     {
+        if (is_string($voteType)) {
+            $voteType = VoteType::tryFrom($voteType) ?? VoteType::LAUGH;
+        }
+
         return match ($voteType) {
             VoteType::LAUGH         => 'Trop drôle',
             VoteType::ANGRY         => 'Énervant',
@@ -37,36 +37,8 @@ final readonly class VoteTypeFormatter
         };
     }
 
-    /**
-     * Label complet : emoji + texte (très utile pour Twig et formulaires).
-     */
-    public function displayLabel(VoteType $voteType): string
+    public function displayLabel(VoteType|string $voteType): string
     {
         return $this->emoji($voteType) . ' ' . $this->label($voteType);
-    }
-
-    /**
-     * Clé de traduction pour le système i18n.
-     */
-    public function labelKey(VoteType $voteType): string
-    {
-        return match ($voteType) {
-            VoteType::LAUGH         => 'vote.laugh',
-            VoteType::ANGRY         => 'vote.angry',
-            VoteType::DISILLUSIONED => 'vote.disillusioned',
-        };
-    }
-
-    /**
-     * Tableau pour Symfony Forms (label => value).
-     * À utiliser dans tes FormTypes ou VoteController.
-     */
-    public function formChoices(): array
-    {
-        $choices = [];
-        foreach (VoteType::cases() as $case) {
-            $choices[$this->displayLabel($case)] = $case->value;
-        }
-        return $choices;
     }
 }

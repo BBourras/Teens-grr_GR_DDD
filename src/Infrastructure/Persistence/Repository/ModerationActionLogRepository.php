@@ -84,9 +84,29 @@ class ModerationActionLogRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+
     // ======================================================
     // ACTIVITÉ DES MODÉRATEURS
     // ======================================================
+
+    /**
+     * Historique des actions de modération sur les contenus d'un utilisateur
+     * (ses posts et ses commentaires qui ont été modérés).
+     */
+    public function findByAffectedUser(User $user, int $limit = 50): array
+    {
+        return $this->createQueryBuilder('l')
+            ->leftJoin('l.moderator', 'm')
+            ->leftJoin('l.post', 'p')
+            ->leftJoin('l.comment', 'c')
+            ->addSelect('m', 'p', 'c')
+            ->where('p.author = :user OR c.author = :user')
+            ->setParameter('user', $user)
+            ->orderBy('l.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
 
     /**
      * Actions effectuées par un modérateur spécifique.

@@ -7,12 +7,17 @@ namespace App\Application\Formatter;
 use App\Domain\Enum\ModerationActionType;
 
 /**
- * Formatter pour les actions de modération (utilisé dans le dashboard modérateur).
+ * Formatter pour les actions de modération.
+ * Accepte à la fois l'enum et une string.
  */
 final readonly class ModerationActionTypeFormatter
 {
-    public function label(ModerationActionType $action): string
+    public function label(ModerationActionType|string $action): string
     {
+        if (is_string($action)) {
+            $action = ModerationActionType::tryFrom($action) ?? ModerationActionType::AUTO_HIDE;
+        }
+
         return match ($action) {
             ModerationActionType::AUTO_HIDE         => 'Masquage automatique',
             ModerationActionType::MODERATOR_HIDE    => 'Masquage manuel',
@@ -20,13 +25,17 @@ final readonly class ModerationActionTypeFormatter
             ModerationActionType::MODERATOR_DELETE  => 'Suppression par modérateur',
             ModerationActionType::REPORTS_CONFIRMED => 'Signalements confirmés',
             ModerationActionType::REPORTS_REJECTED  => 'Signalements rejetés',
-            ModerationActionType::AUTHOR_DELETE     => 'Suppression par l\'auteur',
+            ModerationActionType::AUTHOR_DELETE     => 'Suppression par l’auteur',
             ModerationActionType::REPORT_CREATED    => 'Signalement créé',
         };
     }
 
-    public function labelKey(ModerationActionType $action): string
+    public function labelKey(ModerationActionType|string $action): string
     {
+        if (is_string($action)) {
+            $action = ModerationActionType::tryFrom($action) ?? ModerationActionType::AUTO_HIDE;
+        }
+
         return match ($action) {
             ModerationActionType::AUTO_HIDE         => 'moderation.action.auto_hide',
             ModerationActionType::MODERATOR_HIDE    => 'moderation.action.moderator_hide',
