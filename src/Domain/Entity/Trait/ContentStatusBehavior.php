@@ -5,85 +5,35 @@ declare(strict_types=1);
 namespace App\Domain\Entity\Trait;
 
 use App\Domain\Enum\ContentStatus;
+use App\Application\Formatter\ContentStatusFormatter;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Trait ContentStatusBehavior.
+ * Trait ContentStatusBehavior
  *
- * Partagé entre Post et Comment pour gérer le cycle de vie du statut
- * (PUBLISHED, AUTO_HIDDEN, HIDDEN_BY_MODERATOR, DELETED).
- *
- * Délègue la logique métier à l'enum ContentStatus.
+ * Comportement commun pour gérer le statut des entités modérables (Post & Comment).
  */
 trait ContentStatusBehavior
 {
-    // ======================================================
-    // MAPPING DOCTRINE
-    // ======================================================
+    #[ORM\Column(enumType: ContentStatus::class)]
+    private ContentStatus $status = ContentStatus::PUBLISHED;
 
-    #[ORM\Column(type: 'string', enumType: ContentStatus::class, length: 50)]
-    protected ContentStatus $status = ContentStatus::PUBLISHED;
-
-    #[ORM\Column(name: 'deleted_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $deletedAt = null;
 
-    #[ORM\Column(name: 'updated_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?\DateTimeImmutable $updatedAt = null;
+    #[ORM\Column(type: Types::INTEGER)]
+    private int $reportCount = 0;
 
-    // ======================================================
-    // LIFECYCLE CALLBACKS
-    // ======================================================
+    private readonly ContentStatusFormatter $formatter;
 
-    #[ORM\PreUpdate]
-    public function onPreUpdateStatus(): void
+    public function __construct()
     {
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->formatter = new ContentStatusFormatter();
     }
 
     // ======================================================
-    // MÉTHODES MÉTIER (déléguées à l'enum)
-    // ======================================================
-
-    public function isVisible(): bool
-    {
-        return $this->status->isVisible() && $this->deletedAt === null;
-    }
-
-    public function isHidden(): bool
-    {
-        return $this->status->isHidden();
-    }
-
-    public function isDeleted(): bool
-    {
-        return $this->status->isDeleted();
-    }
-
-    public function isModerated(): bool
-    {
-        return $this->status->isModerated();
-    }
-
-    public function isAutoModerated(): bool
-    {
-        return $this->status->isAutoModerated();
-    }
-
-    public function isManuallyModerated(): bool
-    {
-        return $this->status->isManuallyModerated();
-    }
-
-    public function markAsDeleted(): static
-    {
-        $this->status = ContentStatus::DELETED;
-        $this->deletedAt = new \DateTimeImmutable();
-        return $this;
-    }
-
-    // ======================================================
-    // GETTERS / SETTERS
+    // ModeratableContentInterface
     // ======================================================
 
     public function getStatusEnum(): ContentStatus
@@ -97,9 +47,10 @@ trait ContentStatusBehavior
         return $this;
     }
 
-    public function getStatusValue(): string
+    public function setDeletedAt(?\DateTimeImmutable $deletedAt): static
     {
-        return $this->status->value;
+        $this->deletedAt = $deletedAt;
+        return $this;
     }
 
     public function getDeletedAt(): ?\DateTimeImmutable
@@ -107,14 +58,53 @@ trait ContentStatusBehavior
         return $this->deletedAt;
     }
 
-    public function setDeletedAt(?\DateTimeImmutable $deletedAt): static
+    public function isVisible(): bool
     {
-        $this->deletedAt = $deletedAt;
+        return $this->status === ContentStatus::PUBLISHED;
+    }
+
+    public function isHidden(): bool
+    {
+        return $this->status === ContentStatus::AUTO_HIDDEN 
+            || $this->status === ContentStatus::HIDDEN_BY_MODERATOR;
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->status === ContentStatus::DELETED;
+    }
+
+    public function isModerated(): bool
+    {
+        return !$this->isVisible();
+    }
+
+    public function incrementReportCount(): static
+    {
+        $this->reportCount++;
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getReportCount(): int
     {
-        return $this->updatedAt;
+        return $this->reportCount;
     }
+
+    // Délégation au Formatter (plus propre)
+    public function label(): string
+    {
+        return $this->formatter->label($this->status);
+    }
+
+    public function labelKey(): string
+    {
+        return $this->formatter->labelKey($this->status);
+    }
+
+    /**
+     * Doit être implémentée dans Post et Comment.
+     */
+    abstract public function getRelatedPostId(): int;
+
+    abstract public function getTargetType(): string;
 }

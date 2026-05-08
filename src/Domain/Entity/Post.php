@@ -209,4 +209,10 @@ class Post implements ModeratableContentInterface
             ? mb_substr($text, 0, $length) . '…'
             : $text;
     }
+
+    public function getRelatedPostId(): int
+    {
+        return $this->getId();
+    }
+
 }

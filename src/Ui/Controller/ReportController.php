@@ -40,9 +40,7 @@ class ReportController extends AbstractController
     }
 
     /**
-     * Logique commune de signalement (Post ou Comment).
-     *
-     * @param Post|Comment $content
+     * Logique commune de signalement.
      */
     private function handleReport(
         ModeratableContentInterface $content,
@@ -86,12 +84,13 @@ class ReportController extends AbstractController
         ]);
     }
 
+    /**
+     * Redirection vers le post concerné (utilise la nouvelle méthode).
+     */
     private function redirectToContent(ModeratableContentInterface $content): Response
     {
-        $postId = $content instanceof Post 
-            ? $content->getId() 
-            : $content->getPost()->getId();
-
-        return $this->redirectToRoute('post_show', ['id' => $postId]);
+        return $this->redirectToRoute('post_show', [
+            'id' => $content->getRelatedPostId()
+        ]);
     }
 }

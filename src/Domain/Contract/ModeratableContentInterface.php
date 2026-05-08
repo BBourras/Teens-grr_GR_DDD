@@ -4,69 +4,48 @@ declare(strict_types=1);
 
 namespace App\Domain\Contract;
 
-use App\Domain\Entity\Post;
-use App\Domain\Entity\User;
 use App\Domain\Enum\ContentStatus;
 
 /**
- * Interface centrale pour tout contenu modérable (Post ET Comment).
+ * ModeratableContentInterface
  *
- * Permet un traitement uniforme dans ModerationService, ReportService,
- * Voters, Dashboard, etc. sans instanceof.
+ * Interface commune à tous les contenus modérables (Post et Comment).
+ * Permet un traitement polymorphe dans les services de modération.
  */
 interface ModeratableContentInterface
 {
-    // ======================================================
-    // IDENTIFICATION
-    // ======================================================
-
     public function getId(): ?int;
 
-    public function getAuthor(): User;
+    public function getStatusEnum(): ContentStatus;
+    public function setStatus(ContentStatus $status): static;
+
+    public function setDeletedAt(?\DateTimeImmutable $deletedAt): static;
+    public function getDeletedAt(): ?\DateTimeImmutable;
+
+    // Statut simplifié
+    public function isVisible(): bool;
+    public function isHidden(): bool;
+    public function isDeleted(): bool;
+    public function isModerated(): bool;
 
     /**
-     * Type de cible ('post' ou 'comment').
+     * Retourne l'ID du Post principal auquel ce contenu est rattaché.
+     * 
+     * - Pour un Post → retourne son propre ID
+     * - Pour un Comment → retourne l'ID du Post parent
+     */
+    public function getRelatedPostId(): int;
+
+    /**
+     * Type utilisé par Target et les factories.
      */
     public function getTargetType(): string;
 
-    /**
-     * Retourne le Post parent :
-     * - Post   → retourne $this
-     * - Comment→ retourne le post associé
-     */
-    public function getPost(): Post;
-
-    // ======================================================
-    // STATUT & MODÉRATION
-    // ======================================================
-
-    public function getStatusEnum(): ContentStatus;
-
-    public function setStatus(ContentStatus $status): static;
-
-    public function isVisible(): bool;
-
-    public function isHidden(): bool;
-
-    public function isDeleted(): bool;
-
-    public function isModerated(): bool;
-
-    public function isAutoModerated(): bool;
-
-    public function isManuallyModerated(): bool;
-
-    public function markAsDeleted(): static;
-
-    public function setDeletedAt(?\DateTimeImmutable $deletedAt): static;
-
-    // ======================================================
-    // COMPTEURS
-    // ======================================================
-
+    // Signalements
+    public function incrementReportCount(): static;
     public function getReportCount(): int;
 
-    public function incrementReportCount(int $by = 1): static;
-
-    public function decrementReportCount(int $by = 1): static;
+    // Affichage
+    public function label(): string;
+    public function labelKey(): string;
 }

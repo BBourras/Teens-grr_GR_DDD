@@ -142,19 +142,41 @@ class Comment implements ModeratableContentInterface
         return $this->id;
     }
 
+        public function markAsDeleted(): static
+    {
+        $this->status = ContentStatus::DELETED;
+        $this->deletedAt = new \DateTimeImmutable();
+        return $this;
+    }
+
     // ======================================================
     // GETTERS
     // ======================================================
 
-    public function getContent(): string { return $this->content; }
-    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
-    public function getReportCount(): int { return $this->reportCount; }
+    public function getContent(): string
+    {
+        return $this->content;
+    }
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+    public function getReportCount(): int
+    {
+        return $this->reportCount;
+    }
 
     /** @return Collection<int, Report> */
-    public function getReports(): Collection { return $this->reports; }
+    public function getReports(): Collection
+    {
+        return $this->reports;
+    }
 
     /** @return Collection<int, ModerationActionLog> */
-    public function getModerationLogs(): Collection { return $this->moderationLogs; }
+    public function getModerationLogs(): Collection
+    {
+        return $this->moderationLogs;
+    }
 
     public function getExcerpt(int $length = 120): string
     {
@@ -162,5 +184,10 @@ class Comment implements ModeratableContentInterface
         return mb_strlen($text) > $length
             ? mb_substr($text, 0, $length) . '…'
             : $text;
+    }
+
+    public function getRelatedPostId(): int
+    {
+        return $this->getPost()->getId();
     }
 }
