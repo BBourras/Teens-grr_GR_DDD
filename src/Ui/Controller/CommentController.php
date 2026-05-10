@@ -41,7 +41,7 @@ class CommentController extends AbstractController
 
             $this->commentService->createComment($dto, $this->getUser(), $post);
 
-            $this->addFlash('success', 'Commentaire ajouté avec succès.');
+            $this->addFlash('success', 'Le commentaire a été ajouté avec succès.');
         } else {
             $this->addFlash('error', 'Le commentaire ne peut pas être vide.');
         }
@@ -69,7 +69,7 @@ class CommentController extends AbstractController
 
         $this->commentService->deleteByAuthor($comment, $this->getUser());
 
-        $this->addFlash('success', 'Commentaire supprimé avec succès.');
+        $this->addFlash('success', 'Le commentaire a été supprimé.');
 
         return $this->redirectToRoute('post_show', ['id' => $post->getId()]);
     }

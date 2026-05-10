@@ -29,13 +29,13 @@ class HomeController extends AbstractController
             6
         );
 
-        $topDuMoment = $this->postService->getTrendingPosts(5);
+        $trendingNow = $this->postService->getTrendingPosts(5);
         $legends     = $this->postService->getLegendPosts(5);
 
         // Scores pour tous les posts affichés
         $allPosts = array_merge(
             $pagination->getItems(),
-            $topDuMoment,
+            $trendingNow,
             $legends
         );
 
@@ -46,7 +46,7 @@ class HomeController extends AbstractController
 
         return $this->render('home/index.html.twig', [
             'pagination'   => $pagination,
-            'topDuMoment'  => $topDuMoment,
+            'trendingNow'  => $trendingNow,
             'legends'      => $legends,
             'postScores'   => $postScores,
         ]);

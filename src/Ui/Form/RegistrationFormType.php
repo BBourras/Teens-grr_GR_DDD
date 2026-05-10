@@ -36,17 +36,17 @@ final class RegistrationFormType extends AbstractType
             ])
 
             ->add('username', TextType::class, [
-                'label' => 'Pseudo',
+                'label' => 'Pseudonyme',
                 'constraints' => [
-                    new Assert\NotBlank(message: 'Le pseudo est obligatoire.'),
+                    new Assert\NotBlank(message: 'Le pseudonyme est obligatoire.'),
                     new Assert\Length(min: 3, max: 50),
                     new Assert\Regex(
                         pattern: '/^[a-zA-Z0-9_\-]+$/',
-                        message: 'Le pseudo ne peut contenir que lettres, chiffres, tirets et underscores.'
+                        message: 'Le pseudonyme ne peut contenir que lettres, chiffres, tirets et underscores.'
                     ),
                 ],
                 'attr' => [
-                    'placeholder'  => 'MonPseudoIronique',
+                    'placeholder'  => 'Mon pseudonyme',
                     'autocomplete' => 'username',
                 ],
             ])

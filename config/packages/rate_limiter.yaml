@@ -11,14 +11,14 @@ framework:
             policy: sliding_window
             limit: 5
             interval: '24 hours'          
-            # cache_pool: cache.app         # Tu peux passer à Redis plus tard
+            # cache_pool: cache.app         # On peut passer à Redis plus tard
 
         # ======================================================
         # INSCRIPTION (anti-spam / bots)
         # ======================================================
         registration:
             policy: fixed_window
-            limit: 3
+            limit: 4
             interval: '1 hour'
 
         # ======================================================
