@@ -9,8 +9,7 @@ use App\Domain\Entity\Post;
 /**
  * DTO pour la modification d'un Post.
  *
- * Utilisé entre le formulaire d'édition
- * et le PostService.
+ * Utilisé entre EditPostFormType et PostService.
  */
 final class EditPostDto
 {
@@ -20,7 +19,7 @@ final class EditPostDto
     ) {}
 
     /**
-     * Hydrate le DTO à partir d'une entité Post.
+     * Crée un DTO à partir d'une entité existante (pour l'édition).
      */
     public static function fromEntity(Post $post): self
     {

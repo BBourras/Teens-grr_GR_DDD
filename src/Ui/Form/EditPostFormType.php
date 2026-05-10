@@ -13,10 +13,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Formulaire de modification d’un Post.
- *
- * Utilise un DTO dédié afin de séparer
- * les cas d’usage création / édition.
+ * Formulaire dédié à l’édition d’un Post.
  */
 final class EditPostFormType extends AbstractType
 {
@@ -26,40 +23,34 @@ final class EditPostFormType extends AbstractType
             ->add('title', TextType::class, [
                 'label' => 'Titre',
                 'constraints' => [
-                    new Assert\NotBlank(
-                        message: 'Le titre ne peut pas être vide.'
-                    ),
+                    new Assert\NotBlank(message: 'Le titre ne peut pas être vide.'),
                     new Assert\Length(
                         min: 5,
                         max: 255,
                         minMessage: 'Le titre doit contenir au moins {{ limit }} caractères.',
-                        maxMessage: 'Le titre ne peut pas dépasser {{ limit }} caractères.',
+                        maxMessage: 'Le titre ne peut pas dépasser {{ limit }} caractères.'
                     ),
                 ],
                 'attr' => [
                     'placeholder' => 'Un titre bien ironique…',
-                    'autofocus'   => true,
                     'maxlength'   => 255,
                 ],
             ])
-
             ->add('content', TextareaType::class, [
                 'label' => 'Votre message',
                 'constraints' => [
-                    new Assert\NotBlank(
-                        message: 'Le contenu ne peut pas être vide.'
-                    ),
+                    new Assert\NotBlank(message: 'Le contenu ne peut pas être vide.'),
                     new Assert\Length(
                         min: 10,
                         max: 5000,
                         minMessage: 'Le contenu doit contenir au moins {{ limit }} caractères.',
-                        maxMessage: 'Le contenu ne peut pas dépasser {{ limit }} caractères.',
+                        maxMessage: 'Le contenu ne peut pas dépasser {{ limit }} caractères.'
                     ),
                 ],
                 'attr' => [
                     'rows'        => 12,
-                    'maxlength'   => 5000,
                     'placeholder' => 'Modifiez votre anecdote…',
+                    'maxlength'   => 5000,
                 ],
             ])
         ;

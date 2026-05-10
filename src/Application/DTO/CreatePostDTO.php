@@ -7,8 +7,7 @@ namespace App\Application\Dto;
 /**
  * DTO pour la création d'un Post.
  *
- * Utilisé entre le formulaire de création
- * et le PostService.
+ * Utilisé entre CreatePostFormType et PostService.
  */
 final class CreatePostDto
 {

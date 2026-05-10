@@ -6,6 +6,8 @@ namespace App\Application\Dto;
 
 /**
  * DTO pour la création d'un commentaire.
+ *
+ * Utilisé entre CommentFormType et CommentService.
  */
 final class CreateCommentDto
 {
